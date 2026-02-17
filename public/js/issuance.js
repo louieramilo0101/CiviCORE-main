@@ -2,19 +2,21 @@
 // ISSUANCE - Certificate Issuance Management
 // ==========================================
 
+// Note: Uses API functions directly from api.js
+
 // --- Load Issuance Data ---
-function loadIssuanceData() {
-    loadIssuanceTable();
+async function loadIssuanceData() {
+    await loadIssuanceTable();
     updateAllStatistics();
 }
 
 // --- Load Issuance Table ---
-function loadIssuanceTable(filterType = 'all') {
+async function loadIssuanceTable(filterType = 'all') {
     const tbody = document.getElementById('issuanceTableBody');
     if (!tbody) return;
     tbody.innerHTML = '';
     
-    let records = db.getAllIssuances();
+    let records = await getAllIssuances();
     if (filterType !== 'all') {
         records = records.filter(r => r.type === filterType);
     }
@@ -45,7 +47,7 @@ function filterIssuance(type) {
 }
 
 // --- Add New Issuance ---
-function addNewIssuance() {
+async function addNewIssuance() {
     const certNumber = document.getElementById('newCertNumber').value;
     const certType = document.getElementById('newCertType').value;
     const certName = document.getElementById('newCertName').value;
@@ -58,7 +60,7 @@ function addNewIssuance() {
         return;
     }
     
-    db.saveIssuance({
+    await saveIssuance({
         certNumber,
         type: certType,
         name: certName,
@@ -72,12 +74,12 @@ function addNewIssuance() {
 }
 
 // --- View Issuance Document ---
-function viewIssuanceDocument(id) {
-    const record = db.getIssuanceById(id);
+async function viewIssuanceDocument(id) {
+    const record = await getIssuanceById(id);
     if (!record) return;
     
     // Find associated doc if exists
-    const docs = db.getAllDocuments();
+    const docs = await getAllDocuments();
     const matchingDoc = docs.find(d => d.personName && d.personName.includes(record.name));
     
     displayIssuanceDocumentModal(record, matchingDoc);
@@ -119,8 +121,8 @@ function displayIssuanceDocumentModal(record, document) {
 }
 
 // --- Print Issuance Record ---
-function printIssuanceRecord(id) {
-    const record = db.getIssuanceById(id);
+async function printIssuanceRecord(id) {
+    const record = await getIssuanceById(id);
     if (!record) return;
     
     const w = window.open('', '_blank');
@@ -156,15 +158,16 @@ function printIssuanceRecord(id) {
 }
 
 // --- Update All Statistics (Dashboard) ---
-function updateAllStatistics() {
-    const docs = db.getAllDocuments();
-    const issuances = db.getAllIssuances();
+async function updateAllStatistics() {
+    const docs = await getAllDocuments();
+    const issuances = await getAllIssuances();
+    const users = await getAllUsers();
     
     if(document.getElementById('totalDocs')) {
         document.getElementById('totalDocs').textContent = docs.length;
     }
     if(document.getElementById('totalUsers')) {
-        document.getElementById('totalUsers').textContent = db.getAllUsers().length;
+        document.getElementById('totalUsers').textContent = users.length;
     }
     if(document.getElementById('totalIssuances')) {
         document.getElementById('totalIssuances').textContent = issuances.length;

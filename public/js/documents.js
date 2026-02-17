@@ -2,7 +2,9 @@
 // DOCUMENTS - Upload, OCR & Document Handling
 // ==========================================
 
-// Global variables
+// Note: Uses API functions directly from api.js
+
+// Global variables for this module
 let selectedDocType = null;
 let uploadedFile = null;
 
@@ -63,10 +65,10 @@ const fileInput = document.getElementById('fileInput');
 uploadArea.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
-function handleFiles(files) {
+async function handleFiles(files) {
     if (files.length > 0) {
         uploadedFile = files[0];
-        preprocessImageForOCR(uploadedFile, (processedData) => {
+        preprocessImageForOCR(uploadedFile, async (processedData) => {
             const newDoc = {
                 id: Date.now(),
                 name: uploadedFile.name,
@@ -78,7 +80,7 @@ function handleFiles(files) {
                 personName: 'Extracted Name',
                 barangay: 'Poblacion'
             };
-            db.saveDocument(newDoc);
+            await saveDocument(newDoc);
             alert(`File "${uploadedFile.name}" processed and saved!`);
             loadDocuments();
         });
@@ -86,11 +88,11 @@ function handleFiles(files) {
 }
 
 // --- Load Documents List ---
-function loadDocuments() {
+async function loadDocuments() {
     const list = document.getElementById('documentsList');
     if(!list) return;
     list.innerHTML = '';
-    const docs = db.getAllDocuments();
+    const docs = await getAllDocuments();
     
     if (docs.length === 0) {
         list.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>No documents found</p></div>`;
@@ -115,11 +117,17 @@ function loadDocuments() {
 }
 
 // --- Delete Document ---
-function deleteDocument(id) {
+async function deleteDocument(id) {
     if(confirm('Delete this document?')) {
-        db.deleteDocument(id);
+        await deleteDocumentAPI(id);
         loadDocuments();
     }
+}
+
+// Wrapper for delete document API
+async function deleteDocumentAPI(id) {
+    const response = await fetch(`/api/documents/${id}`, { method: 'DELETE' });
+    return await response.json();
 }
 
 // --- Marriage Forms Logic ---
@@ -148,7 +156,7 @@ function updateMarriageFormsInfo() {
 }
 
 // --- Save Marriage License ---
-function saveMarriageLicense() {
+async function saveMarriageLicense() {
     const groomAge = parseInt(document.getElementById('groomAge').value);
     const brideAge = parseInt(document.getElementById('brideAge').value);
     const barangay = document.getElementById('marriageBarangay').value;
@@ -173,7 +181,7 @@ function saveMarriageLicense() {
         metadata: { groomAge, brideAge, consent, advice }
     };
     
-    db.saveDocument(newDoc);
+    await saveDocument(newDoc);
     alert(`Marriage License Saved!\nConsent Form: ${consent ? 'Yes' : 'No'}\nAdvice Form: ${advice ? 'Yes' : 'No'}`);
     navigateToPage('uploadPage');
 }

@@ -64,6 +64,33 @@ async function updateUser(user) {
     return await response.json();
 }
 
+async function updateUserProfile(userId, name, email) {
+    const response = await fetch(`${API_BASE}/api/users/${userId}/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email })
+    });
+    return await response.json();
+}
+
+async function deleteUser(id, password) {
+    const response = await fetch(`${API_BASE}/api/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+    });
+    return await response.json();
+}
+
+async function verifyPassword(password) {
+    const response = await fetch(`${API_BASE}/api/verify-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+    });
+    return await response.json();
+}
+
 // Templates API
 async function getTemplates() {
     const response = await fetch(`${API_BASE}/api/templates`);

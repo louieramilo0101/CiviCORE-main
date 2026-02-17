@@ -240,6 +240,16 @@ app.put('/api/users/:id', (req, res) => {
     });
 });
 
+// UPDATE user profile (name and email)
+app.put('/api/users/:id/profile', (req, res) => {
+    const { name, email } = req.body;
+    const sql = "UPDATE users SET name = ?, email = ? WHERE id = ?";
+    db.query(sql, [name, email, req.params.id], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true, message: "Profile updated successfully!" });
+    });
+});
+
 // DELETE user
 app.delete('/api/users/:id', (req, res) => {
     const sql = "DELETE FROM users WHERE id = ?";
