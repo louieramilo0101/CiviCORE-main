@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
@@ -10,12 +12,12 @@ app.use(cors());
 // This tells the server to look in 'public' for your index.html
 app.use(express.static('public')); 
 
-// Connection to the 'civicore_db' you just made in HeidiSQL
+// Database connection using environment variables
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: '', 
-    database: 'civicore_db'
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'civicore_db'
 });
 
 db.connect((err) => {
@@ -260,7 +262,7 @@ app.delete('/api/users/:id', (req, res) => {
 });
 
 // Port for your local website
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`🚀 CiviCORE running at http://localhost:${PORT}`);
 });
