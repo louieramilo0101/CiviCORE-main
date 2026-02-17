@@ -31,6 +31,24 @@ bash
 
 ## Step 2: Set Up the Database
 
+### Option C: Import Ready-made Database (Easiest!)
+
+ (`civicore_db.sql`), follow these steps:
+
+1. **Open HeidiSQL** (from Laragon's menu)(Database)
+2. **Create an empty database**:
+   - Right-click on left sidebar → "Create new" → "Database"
+   - Name it: `civicore_db`
+   - Click "Create"
+
+3. **Import the database**:
+   - Select `civicore_db` in the left sidebar
+   - Go to File → "Load SQL file..."
+   - Navigate to the exported database file (e.g., `civicore_db.sql`)
+   - Click "Run" (or press F9)
+
+4. **Done!** The database is ready with all data included.
+
 ### Option A: Using Laragon (Recommended)
 
 1. **Open Laragon** and make sure MySQL is running (green indicator)
@@ -77,29 +95,11 @@ sql
    
 ```
 
-### Option C: Import Ready-made Database (Easiest!)
-
-If the team lead has shared an exported database file (`civicore_db.sql`), follow these steps:
-
-1. **Open HeidiSQL** (from Laragon's menu)
-2. **Create an empty database**:
-   - Right-click on left sidebar → "Create new" → "Database"
-   - Name it: `civicore_db`
-   - Click "Create"
-
-3. **Import the database**:
-   - Select `civicore_db` in the left sidebar
-   - Go to File → "Load SQL file..."
-   - Navigate to the exported database file (e.g., `civicore_db.sql`)
-   - Click "Run" (or press F9)
-
-4. **Done!** The database is ready with all data included.
-
 ---
 
-## How to Export Your Database (For Team Lead)
+## How to Export Your Database
 
-If you want to share your existing database with the team:
+If you want to share your existing database:
 
 1. **Open HeidiSQL**
 2. Right-click on `civicore_db` database
