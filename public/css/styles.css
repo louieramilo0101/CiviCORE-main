@@ -177,6 +177,7 @@ body {
 }
 
 .login-box {
+    position: relative;
     background: white;
     border-radius: 10px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
@@ -202,6 +203,23 @@ body {
     color: var(--primary-color);
     margin-bottom: 10px;
     font-size: 28px;
+    margin-top: 30px;
+}
+
+.back-to-home {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    color: var(--text-light);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    transition: color 0.3s;
+    cursor: pointer;
+}
+
+.back-to-home:hover {
+    color: var(--primary-color);
 }
 
 .login-box .subtitle {
@@ -231,9 +249,56 @@ body {
     transition: border-color 0.3s;
 }
 
-.form-group input:focus {
-    outline: none;
-    border-color: var(--secondary-color);
+/* Password Input with Toggle */
+.password-input-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.password-input-wrapper input {
+    width: 100%;
+    padding-right: 45px;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-light);
+    transition: color 0.3s;
+}
+
+.password-toggle-btn:hover {
+    color: var(--primary-color);
+}
+
+.password-toggle-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+.password-toggle-btn .eye-open {
+    display: none;
+}
+
+.password-toggle-btn .eye-closed {
+    display: block;
+}
+
+.password-toggle-btn.active .eye-open {
+    display: block;
+}
+
+.password-toggle-btn.active .eye-closed {
+    display: none;
 }
 
 .login-btn {
@@ -1141,4 +1206,121 @@ body {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* ===== MODAL STYLES ===== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal-container {
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.2s ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.modal-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #e74c3c, #c0392b);
+}
+
+.modal-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    animation: iconBounce 0.25s ease-out 0.1s both;
+}
+
+@keyframes iconBounce {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.modal-icon.error {
+    background: linear-gradient(135deg, #fadbd8, #f5b7b1);
+    color: #c0392b;
+}
+
+.modal-icon.error svg {
+    stroke: #c0392b;
+}
+
+.modal-title {
+    color: #1a2f4a;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.modal-message {
+    color: #666666;
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+.modal-btn {
+    background: linear-gradient(135deg, #1a2f4a, #2c3e50);
+    color: white;
+    border: none;
+    padding: 14px 40px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.modal-btn:hover {
+    background: linear-gradient(135deg, #2c3e50, #34495e);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(26, 47, 74, 0.3);
+}
+
+.modal-btn:active {
+    transform: translateY(0);
 }
