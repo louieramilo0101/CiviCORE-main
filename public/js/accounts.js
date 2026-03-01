@@ -24,27 +24,50 @@ async function loadAccounts() {
     const accountsSidebar = document.querySelector('.accounts-sidebar');
     const permissionsSection = document.querySelector('#accountsPage > div:last-child');
     
+    console.log('loadAccounts called - currentUser:', currentUser);
+    
     if (!list) {
+        console.error('accountsList element not found!');
         isLoadingAccounts = false;
         return;
     }
-    list.innerHTML = '';
+    
+    list.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">Loading accounts...</div>';
     
     // Get users from API based on role - Super Admin sees all, others only see themselves
     let users;
-    if (currentUser.role === 'Super Admin') {
-        users = await getAllUsers();
-        // Show the user accounts list for Super Admin
-        if (accountsSidebar) accountsSidebar.style.display = 'block';
-        // Show permissions section for Super Admin
-        if (permissionsSection) permissionsSection.style.display = 'block';
-    } else {
-        // Non-Super Admin users can only see their own account
-        users = [currentUser];
-        // Hide the user accounts list for non-Super Admin
-        if (accountsSidebar) accountsSidebar.style.display = 'none';
-        // Hide permissions section for non-Super Admin
-        if (permissionsSection) permissionsSection.style.display = 'none';
+    try {
+        if (currentUser.role === 'Super Admin') {
+            console.log('Loading all users for Super Admin...');
+            users = await getAllUsers();
+            console.log('Users loaded:', users);
+            
+            // Show the user accounts list for Super Admin
+            if (accountsSidebar) accountsSidebar.style.display = 'block';
+            // Show permissions section for Super Admin
+            if (permissionsSection) permissionsSection.style.display = 'block';
+        } else {
+            // Non-Super Admin users can only see their own account
+            users = [currentUser];
+            // Hide the user accounts list for non-Super Admin
+            if (accountsSidebar) accountsSidebar.style.display = 'none';
+            // Show permissions section for non-Super Admin (but only shows their own permissions)
+            if (permissionsSection) permissionsSection.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+        list.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">Error loading accounts. Please refresh the page.</div>';
+        isLoadingAccounts = false;
+        return;
+    }
+    
+    // Clear the loading message
+    list.innerHTML = '';
+    
+    if (!users || users.length === 0) {
+        list.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No accounts found</div>';
+        isLoadingAccounts = false;
+        return;
     }
     
     users.forEach((user) => {
@@ -54,6 +77,8 @@ async function loadAccounts() {
         item.addEventListener('click', () => displayAccountDetails(user));
         list.appendChild(item);
     });
+    
+    console.log('Accounts rendered:', users.length, 'accounts');
     
     // Show the currently logged-in user's details by default
     if(users.length > 0) {
@@ -69,7 +94,8 @@ async function loadAccounts() {
 let isLoadingPermissions = false;
 
 // --- Load Permissions ---
-async function loadPermissions() {
+// This shows the permissions of the currently selected user
+async function loadPermissions(userId = null) {
     // Prevent concurrent calls
     if (isLoadingPermissions) {
         console.log('loadPermissions already in progress, skipping...');
@@ -80,27 +106,64 @@ async function loadPermissions() {
     
     const container = document.getElementById('permissionsContainer');
     if(!container) {
+        console.error('permissionsContainer element not found!');
         isLoadingPermissions = false;
         return;
     }
-    container.innerHTML = '';
     
-    // Super Admin sees all users' permissions, others only see their own
-    let users;
-    if (currentUser.role === 'Super Admin') {
-        users = await getAllUsers();
-    } else {
-        users = [currentUser];
+    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">Loading permissions...</div>';
+    
+    // If no userId is provided, use the currently selected user
+    let user = null;
+    
+    try {
+        if (currentUser.role !== 'Super Admin') {
+            // Non-Super Admin users can only see their own permissions
+            user = currentUser;
+        } else if (userId) {
+            // Load specific user's permissions (Super Admin only)
+            user = await getUserById(userId);
+        } else if (selectedUserForActions) {
+            // Use the currently selected user from the account list (Super Admin only)
+            user = selectedUserForActions;
+        } else {
+            // Fallback to current logged in user
+            user = currentUser;
+        }
+        
+        if (!user) {
+            container.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No user selected</div>';
+            isLoadingPermissions = false;
+            return;
+        }
+        
+    } catch (error) {
+        console.error('Error loading permissions:', error);
+        container.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">Error loading permissions. Please refresh the page.</div>';
+        isLoadingPermissions = false;
+        return;
     }
     
-    users.forEach(user => {
-        container.innerHTML += `
-            <div style="background: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
-                <strong>${user.name}</strong> (${user.role})<br>
-                <small>${user.permissions.join(', ')}</small>
+    // Ensure permissions is an array
+    const permissions = Array.isArray(user.permissions) ? user.permissions : [];
+    
+    // Clear the loading message and display the user's permissions
+    container.innerHTML = `
+        <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid var(--secondary-color);">
+            <h4 style="margin: 0 0 10px 0; color: var(--primary-color);">${user.name}</h4>
+            <p style="margin: 0 0 15px 0; color: #666; font-size: 13px;"><strong>Role:</strong> ${user.role}</p>
+            <div style="background: white; padding: 15px; border-radius: 5px;">
+                <strong style="color: var(--primary-color);">Permissions:</strong><br>
+                <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px;">
+                    ${permissions.length > 0 ? permissions.map(perm => `
+                        <span style="background: var(--secondary-color); color: white; padding: 5px 12px; border-radius: 15px; font-size: 12px;">${perm}</span>
+                    `).join('') : '<span style="color: #999;">No permissions assigned</span>'}
+                </div>
             </div>
-        `;
-    });
+        </div>
+    `;
+    
+    console.log('Permissions loaded for user:', user.name);
     
     // Reset the loading flag
     isLoadingPermissions = false;
@@ -119,6 +182,9 @@ function displayAccountDetails(user) {
         <div class="detail-field"><label>Email:</label> ${user.email}</div>
         <div class="detail-field"><label>Role:</label> ${user.role}</div>
     `;
+    
+    // Update the permissions section to show the selected user's permissions
+    loadPermissions();
 }
 
 // --- Open Change Password Modal ---

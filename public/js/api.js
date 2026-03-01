@@ -2,7 +2,7 @@
 // API LAYER - MySQL Database via Node.js Server
 // ==========================================
 
-const API_BASE = ''; // Use relative URLs (same origin)
+const API_BASE = 'http://localhost:5000'; // Use absolute URL for API calls
 
 // Documents API
 async function getAllDocuments() {
@@ -41,6 +41,17 @@ async function saveIssuance(record) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(record)
     });
+    return await response.json();
+}
+
+async function getNextCertNumber(type) {
+    const response = await fetch(`${API_BASE}/api/issuances/next-cert-number/${type}`);
+    return await response.json();
+}
+
+// Barangays API
+async function getAllBarangays() {
+    const response = await fetch(`${API_BASE}/api/barangays`);
     return await response.json();
 }
 

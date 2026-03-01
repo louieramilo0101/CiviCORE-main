@@ -1288,6 +1288,15 @@ body {
     stroke: #c0392b;
 }
 
+.modal-icon.success {
+    background: linear-gradient(135deg, #d5f4e6, #a9dfbf);
+    color: #27ae60;
+}
+
+.modal-icon.success svg {
+    stroke: #27ae60;
+}
+
 .modal-title {
     color: #1a2f4a;
     font-size: 24px;
@@ -1323,4 +1332,19 @@ body {
 
 .modal-btn:active {
     transform: translateY(0);
+}
+
+/* Success button variant */
+.modal-btn.success {
+    background: linear-gradient(135deg, #27ae60, #229954);
+}
+
+.modal-btn.success:hover {
+    background: linear-gradient(135deg, #229954, #1e8449);
+    box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+}
+
+/* Success modal top bar */
+.modal-container.success-modal::before {
+    background: linear-gradient(90deg, #27ae60, #229954);
 }

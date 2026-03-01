@@ -50,18 +50,63 @@ function initializeNaicMap() {
     }
 
     // Initialize Map centered on Naic
-    const map = L.map('mapContainer').setView([14.3150, 120.7700], 13);
+    const map = L.map('mapContainer', {
+        center: [14.3150, 120.7700],
+        zoom: 13,
+        minZoom: 12,
+        maxZoom: 15,
+        scrollWheelZoom: true
+    });
     window.naicMap = map;
+
+    // Define Naic municipality bounds (southwest and northeast corners)
+    const naicBounds = [
+        [14.26, 120.73],   // Southwest corner of Naic
+        [14.36, 120.85]    // Northeast corner of Naic
+    ];
+    
+    // Set max bounds to restrict panning to NAIC municipality only
+    map.setMaxBounds(naicBounds);
+    map.setMaxZoom(15);
+    map.setMinZoom(12);
 
     // Add OpenStreetMap Tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
-        maxZoom: 18,
+        maxZoom: 19,
         minZoom: 12
     }).addTo(map);
 
-    // Get Data for Statistics
-    const issuances = db.getAllIssuances();
+    // Force map to recalculate size after initialization
+    // This ensures markers are properly rendered
+    setTimeout(() => {
+        map.invalidateSize();
+    }, 100);
+
+    // Get Data for Statistics (async-compatible)
+    // Use getAllIssuances function if available (async), otherwise use db.getAllIssuances
+    let issuances = [];
+    if (typeof getAllIssuances === 'function') {
+        // It's async, we'll handle it differently
+        getAllIssuances().then(data => {
+            addMarkersToMap(map, data || []);
+        }).catch(() => {
+            // Fallback to db.getAllIssuances if available
+            if (typeof db !== 'undefined' && db.getAllIssuances) {
+                addMarkersToMap(map, db.getAllIssuances());
+            } else {
+                addMarkersToMap(map, []);
+            }
+        });
+    } else if (typeof db !== 'undefined' && db.getAllIssuances) {
+        addMarkersToMap(map, db.getAllIssuances());
+    } else {
+        addMarkersToMap(map, []);
+    }
+}
+
+// --- Add Markers to Map ---
+function addMarkersToMap(map, issuances) {
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     let activeAreas = 0;
@@ -77,32 +122,38 @@ function initializeNaicMap() {
 
         const totalCount = issuances.filter(i => i.barangay === brgy.name).length;
 
-        // Create the Marker
+        // Create the Marker using standard Leaflet pin marker (like original code)
         const marker = L.marker([brgy.lat, brgy.lng]).addTo(map);
 
-        // Define the Hover Content (Tooltip)
-        const tooltipContent = `
-            <div style="text-align: center; font-family: 'Segoe UI', sans-serif; min-width: 150px;">
-                <strong style="color: #2c3e50; font-size: 14px; display: block; margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 3px;">
-                    ${brgy.name}
+        // Define the Popup Content
+        const popupContent = `
+            <div style="text-align: center; font-family: 'Segoe UI', sans-serif; min-width: 180px; padding: 5px;">
+                <strong style="color: #2c3e50; font-size: 15px; display: block; margin-bottom: 8px; border-bottom: 2px solid #d4a574; padding-bottom: 5px;">
+                    📍 ${brgy.name}
                 </strong>
-                <div style="font-size: 12px; text-align: left; padding: 0 5px;">
-                    <div style="margin-bottom: 3px;">
+                <div style="font-size: 13px; text-align: left; padding: 5px;">
+                    <div style="margin-bottom: 6px; padding: 4px; background: ${monthlyCount > 0 ? '#d5f4e6' : '#f5f5f5'}; border-radius: 4px;">
                         📅 This Month: <b style="color: ${monthlyCount > 0 ? '#27ae60' : '#7f8c8d'}; float: right;">${monthlyCount}</b>
                     </div>
-                    <div>
+                    <div style="padding: 4px; background: #e8f4fd; border-radius: 4px;">
                         🗂️ Total Issued: <b style="color: #2980b9; float: right;">${totalCount}</b>
                     </div>
                 </div>
             </div>
         `;
 
-        // Bind Tooltip
+        // Bind Popup (click to show details)
+        marker.bindPopup(popupContent, {
+            className: 'barangay-popup'
+        });
+
+        // Also bind tooltip for hover
+        const tooltipContent = `<strong>${brgy.name}</strong><br>This Month: ${monthlyCount}<br>Total: ${totalCount}`;
         marker.bindTooltip(tooltipContent, {
             permanent: false,
             direction: 'top',
             offset: [0, -10],
-            opacity: 1,
+            opacity: 0.9,
             className: 'barangay-tooltip'
         });
 

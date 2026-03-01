@@ -84,6 +84,16 @@ function toLandingPage() {
     
     // Reset login form
     document.getElementById('loginForm').reset();
+    
+    // Reset password visibility toggle - ensure password is hidden
+    const passwordInput = document.getElementById('password');
+    const toggleBtn = passwordInput ? passwordInput.closest('.password-input-wrapper').querySelector('.password-toggle-btn') : null;
+    if (passwordInput) {
+        passwordInput.type = "password";
+    }
+    if (toggleBtn) {
+        toggleBtn.classList.remove("active");
+    }
 }
 
 // ==========================================
@@ -171,6 +181,16 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
     document.getElementById('loginContainer').classList.remove('active');
     document.getElementById('landingContainer').classList.add('active');
     document.getElementById('loginForm').reset();
+    
+    // Reset password visibility toggle - ensure password is hidden
+    const passwordInput = document.getElementById('password');
+    const toggleBtn = document.querySelector('#password').closest('.password-input-wrapper').querySelector('.password-toggle-btn');
+    if (passwordInput) {
+        passwordInput.type = "password";
+    }
+    if (toggleBtn) {
+        toggleBtn.classList.remove("active");
+    }
 });
 
 // ==========================================

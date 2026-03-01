@@ -33,7 +33,7 @@ function navigateToPage(pageId) {
         loadDocuments();
     }
     if (pageId === 'issuancePage') {
-        loadIssuanceData();
+        initIssuancePage();
     }
     if (pageId === 'accountsPage') {
         loadAccounts();

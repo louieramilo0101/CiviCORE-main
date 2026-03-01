@@ -170,6 +170,59 @@ app.post('/api/issuances', (req, res) => {
     });
 });
 
+// GET next certificate number (auto-generate)
+app.get('/api/issuances/next-cert-number/:type', (req, res) => {
+    const type = req.params.type;
+    let prefix = 'BC';
+    if (type === 'death') prefix = 'DC';
+    if (type === 'marriage' || type === 'marriage_license') prefix = 'ML';
+    
+    const year = new Date().getFullYear();
+    const sql = "SELECT certNumber FROM issuances WHERE type = ? AND certNumber LIKE ? ORDER BY id DESC LIMIT 1";
+    db.query(sql, [type, `${prefix}-${year}%`], (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        let nextNum = 1;
+        if (results.length > 0) {
+            const lastCertNum = results[0].certNumber;
+            const parts = lastCertNum.split('-');
+            if (parts.length === 3) {
+                nextNum = parseInt(parts[2]) + 1;
+            }
+        }
+        
+        const certNumber = `${prefix}-${year}-${String(nextNum).padStart(3, '0')}`;
+        res.json({ certNumber });
+    });
+});
+
+// ==========================================
+// BARANGAYS API ENDPOINTS
+// ==========================================
+
+// GET all barangays
+app.get('/api/barangays', (req, res) => {
+    const sql = "SELECT * FROM barangays ORDER BY name ASC";
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        if (results.length === 0) {
+            const naicBarangays = [
+                "Gomez-Zamora (Pob.)", "Capt. C. Nazareno (Pob.)", "Ibayo Silangan",
+                "Ibayo Estacion", "Kanluran", "Makina", "Sapa", "Bucana Malaki",
+                "Bucana Sasahan", "Bagong Karsada", "Balsahan", "Bancaan", "Muzon",
+                "Latoria", "Labac", "Mabolo", "San Roque", "Santulan", "Molino",
+                "Calubcob", "Halang", "Malainen Bago", "Malainen Luma", "Palangue 1",
+                "Palangue 2 & 3", "Humbac", "Munting Mapino", "Sabang", "Timalan Balsahan",
+                "Timalan Concepcion"
+            ];
+            res.json(naicBarangays.map(name => ({ name })));
+        } else {
+            res.json(results);
+        }
+    });
+});
+
 // ==========================================
 // TEMPLATES API ENDPOINTS
 // ==========================================

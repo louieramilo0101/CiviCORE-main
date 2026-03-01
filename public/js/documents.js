@@ -108,12 +108,85 @@ async function loadDocuments() {
                 <div class="doc-meta">${doc.type} • ${doc.date} • ${doc.size}</div>
             </div>
             <div class="doc-actions">
-                <button class="btn-small" onclick="alert('Previewing ${doc.name}...')">View</button>
+                <button class="btn-small" onclick="viewDocument(${doc.id})">View</button>
                 <button class="btn-small danger" onclick="deleteDocument(${doc.id})">Delete</button>
             </div>
         `;
         list.appendChild(item);
     });
+}
+
+// --- View Document ---
+async function viewDocument(id) {
+    const docs = await getAllDocuments();
+    const doc = docs.find(d => d.id === id);
+    
+    if (!doc) {
+        alert('Document not found');
+        return;
+    }
+    
+    displayDocumentModal(doc);
+}
+
+// --- Display Document Modal ---
+function displayDocumentModal(doc) {
+    const typeIcons = {
+        'birth': '👶',
+        'death': '⚰️',
+        'marriage': '💍',
+        'marriage_license': '💍',
+        'Uncategorized': '📄'
+    };
+    
+    const icon = typeIcons[doc.type] || '📄';
+    const statusBg = doc.status === 'Processed' ? '#d5f4e6' : '#fef5e7';
+    const statusColor = doc.status === 'Processed' ? '#27ae60' : '#f39c12';
+    
+    const modalHTML = `
+        <div id="documentModal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center;">
+            <div style="background: white; border-radius: 10px; max-width: 800px; width: 100%; padding: 30px; position: relative; max-height: 90vh; overflow-y: auto;">
+                <button onclick="document.getElementById('documentModal').remove()" style="position: absolute; top: 15px; right: 15px; border: none; background: none; font-size: 20px; cursor: pointer;">✕</button>
+                
+                <h2 style="border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px;">
+                    ${icon} ${doc.type ? doc.type.toUpperCase() : 'DOCUMENT'} Details
+                </h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div><strong>Document Name:</strong> ${doc.name}</div>
+                    <div><strong>Type:</strong> ${doc.type || 'N/A'}</div>
+                    <div><strong>Date:</strong> ${doc.date || 'N/A'}</div>
+                    <div><strong>Size:</strong> ${doc.size || 'N/A'}</div>
+                    <div><strong>Status:</strong> <span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 8px; border-radius: 4px;">${doc.status || 'N/A'}</span></div>
+                    <div><strong>Person Name:</strong> ${doc.personName || 'N/A'}</div>
+                    <div><strong>Barangay:</strong> ${doc.barangay || 'N/A'}</div>
+                </div>
+                
+                ${doc.previewData ? `
+                <div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #3498db; margin-bottom: 20px;">
+                    <strong>Document Preview:</strong>
+                    <div style="margin-top: 10px; text-align: center;">
+                        <img src="${doc.previewData}" style="max-width: 100%; max-height: 400px; height: auto; border: 1px solid #ddd; border-radius: 5px;" alt="Document Preview">
+                    </div>
+                </div>` : ''}
+                
+                ${doc.metadata ? `
+                <div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #9b59b6; margin-bottom: 20px;">
+                    <strong>Additional Metadata:</strong>
+                    <pre style="margin-top: 10px; white-space: pre-wrap; font-size: 12px;">${JSON.stringify(doc.metadata, null, 2)}</pre>
+                </div>` : ''}
+                
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button class="btn-small danger" onclick="deleteDocument(${doc.id}); document.getElementById('documentModal').remove();">Delete</button>
+                    <button class="btn-small" onclick="document.getElementById('documentModal').remove()">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const existing = document.getElementById('documentModal');
+    if(existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
 // --- Delete Document ---

@@ -12,6 +12,30 @@ let charts = {};
 let printRecords = [];
 
 // ==========================================
+// PASSWORD VISIBILITY TOGGLE
+// ==========================================
+
+/**
+ * Toggle password visibility for login forms
+ * @param {string} inputId - The ID of the password input field
+ * @param {HTMLElement} toggleBtn - The toggle button element
+ */
+function togglePasswordVisibility(inputId, toggleBtn) {
+    const passwordInput = document.getElementById(inputId);
+    
+    if (passwordInput) {
+        // Toggle between password and text type
+        if (passwordInput.type === "password") {
+            passwordInput.type = "text";
+            toggleBtn.classList.add("active");
+        } else {
+            passwordInput.type = "password";
+            toggleBtn.classList.remove("active");
+        }
+    }
+}
+
+// ==========================================
 // INITIALIZATION ON PAGE LOAD
 // ==========================================
 
