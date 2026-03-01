@@ -188,6 +188,4 @@ To create additional user accounts:
 
 ---
 
-## Need Help?
 
-If you encounter any issues, contact the team lead or check the project documentation.
