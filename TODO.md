@@ -1,15 +1,21 @@
-# TODO - Account Button Updates
+# Document Upload System Implementation - COMPLETED
 
-## Task
-- Remove separate "Change Password" button (it will be inside modal)
-- Keep "Edit Account" button as the main button (the button beside the delete account)
+## Task: Fix document upload to work properly
 
-## Steps:
-1. [ ] Update index.html - Replace static non-functional buttons with working buttons that have onclick handlers
-2. [ ] Update accounts.js - Add functionality to track selected user and handle button clicks
-3. [ ] Verify the changes work correctly
+### Steps Completed:
+- [x] 1. Install multer package for file upload handling
+- [x] 2. Update server.js - Add multer middleware and file upload endpoint
+- [x] 3. Update api.js - Add file upload API function with error handling
+- [x] 4. Update documents.js - Add process button handler and improve upload flow
 
-## Details:
-- Edit Account button should open the edit account modal for the currently selected user
-- Delete Account button should delete the currently selected user
-- Change Password button should remain inside the Edit Account modal
+### How It Works:
+1. User selects document type (birth/death/marriage)
+2. User clicks upload area or selects file
+3. User clicks "Process with OCR" button
+4. File is uploaded to server via multipart form data
+5. Server stores file in /uploads folder
+6. Document metadata is saved to database
+7. Success/error modal is displayed
+8. Documents list is refreshed
+
+### Status: COMPLETE ✅

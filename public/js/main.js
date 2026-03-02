@@ -21,19 +21,33 @@ let printRecords = [];
  * @param {HTMLElement} toggleBtn - The toggle button element
  */
 function togglePasswordVisibility(inputId, toggleBtn) {
-    const passwordInput = document.getElementById(inputId);
+    console.log('togglePasswordVisibility called', { inputId, toggleBtn });
     
-    if (passwordInput) {
-        // Toggle between password and text type
-        if (passwordInput.type === "password") {
-            passwordInput.type = "text";
-            toggleBtn.classList.add("active");
+    try {
+        const passwordInput = document.getElementById(inputId);
+        
+        if (passwordInput) {
+            console.log('Password input found, current type:', passwordInput.type);
+            // Toggle between password and text type
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+                toggleBtn.classList.add("active");
+                console.log('Password visibility: ON');
+            } else {
+                passwordInput.type = "password";
+                toggleBtn.classList.remove("active");
+                console.log('Password visibility: OFF');
+            }
         } else {
-            passwordInput.type = "password";
-            toggleBtn.classList.remove("active");
+            console.error('Password input not found for id:', inputId);
         }
+    } catch (error) {
+        console.error('Error in togglePasswordVisibility:', error);
     }
 }
+
+// Make function globally accessible
+window.togglePasswordVisibility = togglePasswordVisibility;
 
 // ==========================================
 // INITIALIZATION ON PAGE LOAD

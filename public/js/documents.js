@@ -68,23 +68,126 @@ fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 async function handleFiles(files) {
     if (files.length > 0) {
         uploadedFile = files[0];
-        preprocessImageForOCR(uploadedFile, async (processedData) => {
-            const newDoc = {
-                id: Date.now(),
-                name: uploadedFile.name,
-                type: selectedDocType || 'Uncategorized',
-                date: new Date().toLocaleDateString(),
-                size: (uploadedFile.size / 1024 / 1024).toFixed(2) + ' MB',
-                status: 'Processed', 
-                previewData: processedData,
-                personName: 'Extracted Name',
-                barangay: 'Poblacion'
-            };
-            await saveDocument(newDoc);
-            alert(`File "${uploadedFile.name}" processed and saved!`);
-            loadDocuments();
-        });
+        
+        // Update upload area to show selected file
+        const uploadAreaEl = document.getElementById('uploadArea');
+        if (uploadAreaEl) {
+            uploadAreaEl.innerHTML = `
+                <div class="icon">📄</div>
+                <p><strong>Selected:</strong> ${uploadedFile.name}</p>
+                <p style="font-size: 12px; color: var(--text-light);">${(uploadedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                <p style="font-size: 12px; color: #27ae60;">✓ File ready - Click "Process with OCR" to upload</p>
+            `;
+        }
     }
+}
+
+// --- Process Button Handler ---
+const processBtn = document.getElementById('processBtn');
+if (processBtn) {
+    processBtn.addEventListener('click', async () => {
+        // Check if file is selected
+        if (!uploadedFile) {
+            showUploadError('Please select a file to upload first!');
+            return;
+        }
+        
+        // Check if document type is selected
+        if (!selectedDocType) {
+            showUploadError('Please select a document type (Birth, Death, or Marriage) first!');
+            return;
+        }
+        
+        // Show processing status
+        processBtn.textContent = 'Processing...';
+        processBtn.disabled = true;
+        
+        try {
+            // Upload file to server
+            const result = await uploadDocument(uploadedFile, selectedDocType, '', 'Poblacion');
+            
+            if (result.success) {
+                showUploadSuccess(`File "${uploadedFile.name}" uploaded successfully!<br><br><strong>Document Type:</strong> ${selectedDocType}<br><strong>File Size:</strong> ${result.size}`);
+                
+                // Reset upload area
+                const uploadAreaEl = document.getElementById('uploadArea');
+                if (uploadAreaEl) {
+                    uploadAreaEl.innerHTML = `
+                        <div class="icon">📁</div>
+                        <p>Click or drag files here to upload</p>
+                        <p style="font-size: 12px; color: var(--text-light);">Supported: PDF, JPG, PNG</p>
+                    `;
+                }
+                
+                // Reset file input
+                fileInput.value = '';
+                uploadedFile = null;
+                
+                // Reset document type selection
+                document.querySelectorAll('.doc-type-btn').forEach(b => b.classList.remove('selected'));
+                selectedDocType = null;
+                
+                // Refresh documents list
+                loadDocuments();
+            } else {
+                showUploadError('Upload failed: ' + (result.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            showUploadError('Upload failed: ' + error.message);
+        } finally {
+            processBtn.textContent = 'Process with OCR';
+            processBtn.disabled = false;
+        }
+    });
+}
+
+// --- Custom Modal Functions for Upload ---
+function showUploadError(message) {
+    // Create custom error modal
+    const existingModal = document.getElementById('uploadModal');
+    if (existingModal) existingModal.remove();
+    
+    const modalHTML = `
+        <div id="uploadModal" class="modal-overlay" style="display: flex;">
+            <div class="modal-container">
+                <div class="modal-icon error">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </div>
+                <h3 class="modal-title">Upload Error</h3>
+                <p class="modal-message">${message}</p>
+                <button class="modal-btn" onclick="document.getElementById('uploadModal').remove()">OK</button>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function showUploadSuccess(message) {
+    // Create custom success modal
+    const existingModal = document.getElementById('uploadModal');
+    if (existingModal) existingModal.remove();
+    
+    const modalHTML = `
+        <div id="uploadModal" class="modal-overlay" style="display: flex;">
+            <div class="modal-container">
+                <div class="modal-icon success">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
+                <h3 class="modal-title">Success!</h3>
+                <p class="modal-message">${message}</p>
+                <button class="modal-btn success" onclick="document.getElementById('uploadModal').remove()">OK</button>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
 // --- Load Documents List ---
@@ -122,7 +225,7 @@ async function viewDocument(id) {
     const doc = docs.find(d => d.id === id);
     
     if (!doc) {
-        alert('Document not found');
+        showUploadError('Document not found');
         return;
     }
     
@@ -235,7 +338,7 @@ async function saveMarriageLicense() {
     const barangay = document.getElementById('marriageBarangay').value;
     
     if (!groomAge || !brideAge) {
-        alert('Please enter both groom and bride ages');
+        showUploadError('Please enter both groom and bride ages');
         return;
     }
 
@@ -255,6 +358,6 @@ async function saveMarriageLicense() {
     };
     
     await saveDocument(newDoc);
-    alert(`Marriage License Saved!\nConsent Form: ${consent ? 'Yes' : 'No'}\nAdvice Form: ${advice ? 'Yes' : 'No'}`);
+    showUploadSuccess(`Marriage License Saved!<br><br>Consent Form: ${consent ? 'Yes' : 'No'}<br>Advice Form: ${advice ? 'Yes' : 'No'}`);
     navigateToPage('uploadPage');
 }

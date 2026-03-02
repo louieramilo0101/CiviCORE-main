@@ -41,23 +41,35 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ==========================================
-// DOMContentLoaded Listener
+// SESSION VALIDATION ON PAGE LOAD
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-    // Check for saved user in localStorage and restore session
+function validateSession() {
+    // Check localStorage for saved user (persists after browser close)
     const savedUser = localStorage.getItem('currentUser');
+    
     if (savedUser) {
         try {
             currentUser = JSON.parse(savedUser);
-            if (currentUser && currentUser.id) {
-                console.log('Restoring session for:', currentUser.name);
-                loginUser();
-            }
+            console.log('Restored session for:', currentUser.name);
+            loginUser();
+            return true;
         } catch (e) {
-            console.error('Error restoring session:', e);
+            console.error('Error parsing saved user:', e);
             localStorage.removeItem('currentUser');
+            return false;
         }
     }
+    
+    console.log('No saved session found');
+    return false;
+}
+
+// ==========================================
+// DOMContentLoaded Listener
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    // Check for saved user in localStorage
+    validateSession();
 });
 
 // ==========================================
@@ -110,7 +122,7 @@ function handleLoginSubmit(e) {
     console.log('Login attempt for:', email);
 
     // Use fetch API for login
-    fetch('http://localhost:5000/api/login', {
+    fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -120,6 +132,7 @@ function handleLoginSubmit(e) {
         console.log('Login response:', data);
         
         if (data.success) {
+            // Save user to localStorage (persists after browser close)
             currentUser = data.user;
             localStorage.setItem('currentUser', JSON.stringify(data.user));
             loginUser();
@@ -175,8 +188,12 @@ async function loginUser() {
 // ==========================================
 // LOGOUT
 // ==========================================
-document.getElementById('logoutBtn').addEventListener('click', () => {
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+    // Clear localStorage to log out
     currentUser = null;
+    localStorage.removeItem('currentUser');
+    
+    // Show landing page
     document.getElementById('mainContainer').classList.remove('active');
     document.getElementById('loginContainer').classList.remove('active');
     document.getElementById('landingContainer').classList.add('active');
@@ -184,7 +201,7 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
     
     // Reset password visibility toggle - ensure password is hidden
     const passwordInput = document.getElementById('password');
-    const toggleBtn = document.querySelector('#password').closest('.password-input-wrapper').querySelector('.password-toggle-btn');
+    const toggleBtn = passwordInput ? passwordInput.closest('.password-input-wrapper').querySelector('.password-toggle-btn') : null;
     if (passwordInput) {
         passwordInput.type = "password";
     }

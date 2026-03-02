@@ -283,6 +283,7 @@ body {
 .password-toggle-btn svg {
     width: 20px;
     height: 20px;
+    pointer-events: none;
 }
 
 .password-toggle-btn .eye-open {

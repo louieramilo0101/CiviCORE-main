@@ -2,7 +2,7 @@
 // API LAYER - MySQL Database via Node.js Server
 // ==========================================
 
-const API_BASE = 'http://localhost:5000'; // Use absolute URL for API calls
+const API_BASE = 'http://localhost:5000';
 
 // Documents API
 async function getAllDocuments() {
@@ -22,6 +22,39 @@ async function saveDocument(doc) {
 async function deleteDocument(id) {
     const response = await fetch(`${API_BASE}/api/documents/${id}`, { method: 'DELETE' });
     return await response.json();
+}
+
+// File upload function with better error handling
+async function uploadDocument(file, docType, personName, barangay) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('docType', docType);
+    formData.append('personName', personName);
+    formData.append('barangay', barangay);
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/documents/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        // Check if response is OK
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Server error: ${response.status} - ${errorText}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            throw new Error(`Expected JSON but got: ${text.substring(0, 100)}`);
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Upload error:', error);
+        throw error;
+    }
 }
 
 // Issuances API

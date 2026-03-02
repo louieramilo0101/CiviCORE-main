@@ -4,10 +4,56 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path');
+const session = require('express-session');
+const multer = require('multer');
+const fs = require('fs');
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+    }
+});
+
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|pdf/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        if (extname && mimetype) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Only images and PDF files are allowed'));
+        }
+    }
+});
+
+// Session middleware
+app.use(session({
+    secret: 'civicore_secret_key_2024',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
 
 // This tells the server to look in 'public' for your index.html
 app.use(express.static('public')); 
@@ -26,7 +72,7 @@ db.connect((err) => {
         return;
     }
     console.log('✅ MySQL Connected successfully via Laragon!');
-    console.log('✓ OCR System Initialized and Ready'); // As per your docs
+    console.log('✓ OCR System Initialized and Ready');
 });
 
 // LOGIN ROUTE: This checks the database when you click Login
@@ -38,7 +84,6 @@ app.post('/api/login', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         
         if (results.length > 0) {
-            // Success! Send the user data back to the website
             const user = results[0];
             
             // Parse permissions from JSON string to array if it exists
@@ -46,22 +91,48 @@ app.post('/api/login', (req, res) => {
                 try {
                     user.permissions = JSON.parse(user.permissions);
                 } catch (e) {
-                    // If parsing fails, set to empty array
                     user.permissions = [];
                 }
             }
             
+            // Store user in session
+            req.session.user = user;
+            
             res.json({ success: true, user: user });
         } else {
-            // Failed login
             res.status(401).json({ success: false, message: "Invalid email or password" });
         }
     });
 });
 
+// SESSION VALIDATION: Check if user session is valid
+app.get('/api/session', (req, res) => {
+    if (req.session && req.session.user) {
+        res.json({ 
+            success: true, 
+            user: req.session.user,
+            sessionId: req.sessionID 
+        });
+    } else {
+        res.status(401).json({ 
+            success: false, 
+            message: "No active session" 
+        });
+    }
+});
+
+// LOGOUT ROUTE: Destroy session
+app.post('/api/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: "Logout failed" });
+        }
+        res.json({ success: true, message: "Logged out successfully" });
+    });
+});
+
 // CREATE USER ROUTE: Allows Super Admin to add new accounts
 app.post('/api/create-account', (req, res) => {
-    // 1. Removed 'department' from here
     const { name, email, password, role } = req.body;
 
     let permissions = '["View Dashboard", "View Services"]'; 
@@ -71,7 +142,6 @@ app.post('/api/create-account', (req, res) => {
         permissions = '["View Dashboard", "Upload Documents", "Mapping Analytics", "View Reports"]';
     }
 
-    // 2. Removed 'department' from the SQL query and the list of values
     const sql = "INSERT INTO users (name, email, password, role, permissions) VALUES (?, ?, ?, ?, ?)";
     db.query(sql, [name, email, password, role, permissions], (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -85,7 +155,6 @@ app.post('/api/create-account', (req, res) => {
 app.post('/api/change-password', (req, res) => {
     const { userId, currentPassword, newPassword } = req.body;
 
-    // First, verify the user exists and current password is correct
     const sql = "SELECT * FROM users WHERE id = ? AND password = ?";
     db.query(sql, [userId, currentPassword], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -94,7 +163,6 @@ app.post('/api/change-password', (req, res) => {
             return res.status(401).json({ success: false, message: "Current password is incorrect" });
         }
 
-        // Update the password
         const updateSql = "UPDATE users SET password = ? WHERE id = ?";
         db.query(updateSql, [newPassword, userId], (err, result) => {
             if (err) return res.status(500).json({ error: err.message });
@@ -105,11 +173,26 @@ app.post('/api/change-password', (req, res) => {
     });
 });
 
+// VERIFY PASSWORD ROUTE: Verifies if password is correct (for confirmation modals)
+app.post('/api/verify-password', (req, res) => {
+    const { userId, password } = req.body;
+
+    const sql = "SELECT * FROM users WHERE id = ? AND password = ?";
+    db.query(sql, [userId, password], (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        
+        if (results.length === 0) {
+            return res.status(401).json({ success: false, message: "Invalid password" });
+        }
+
+        res.json({ success: true, message: "Password verified" });
+    });
+});
+
 // ==========================================
 // DOCUMENTS API ENDPOINTS
 // ==========================================
 
-// GET all documents
 app.get('/api/documents', (req, res) => {
     const sql = "SELECT * FROM documents ORDER BY id DESC";
     db.query(sql, (err, results) => {
@@ -118,7 +201,6 @@ app.get('/api/documents', (req, res) => {
     });
 });
 
-// POST new document
 app.post('/api/documents', (req, res) => {
     const { name, type, date, size, status, previewData, personName, barangay, metadata } = req.body;
     const sql = "INSERT INTO documents (name, type, date, size, status, previewData, personName, barangay, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -128,7 +210,6 @@ app.post('/api/documents', (req, res) => {
     });
 });
 
-// DELETE document
 app.delete('/api/documents/:id', (req, res) => {
     const sql = "DELETE FROM documents WHERE id = ?";
     db.query(sql, [req.params.id], (err, result) => {
@@ -137,11 +218,61 @@ app.delete('/api/documents/:id', (req, res) => {
     });
 });
 
+// FILE UPLOAD ENDPOINT - Handle file upload with multipart form data
+app.post('/api/documents/upload', upload.single('file'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ success: false, error: 'No file uploaded' });
+    }
+    
+    const { docType, personName, barangay } = req.body;
+    
+    // Get file info
+    const fileInfo = {
+        originalName: req.file.originalname,
+        filename: req.file.filename,
+        path: req.file.path,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+    };
+    
+    // Save document metadata to database
+    const fileSizeMB = (req.file.size / (1024 * 1024)).toFixed(2) + ' MB';
+    const sql = "INSERT INTO documents (name, type, date, size, status, previewData, personName, barangay, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    
+    db.query(sql, [
+        req.file.originalname,
+        docType || 'Uncategorized',
+        new Date().toLocaleDateString(),
+        fileSizeMB,
+        'Uploaded',
+        null, // previewData - can be generated from file if needed
+        personName || '',
+        barangay || '',
+        JSON.stringify(fileInfo)
+    ], (err, result) => {
+        if (err) {
+            console.error('Error saving document:', err);
+            return res.status(500).json({ success: false, error: err.message });
+        }
+        
+        console.log(`✅ File uploaded: ${req.file.originalname}`);
+        res.json({ 
+            success: true, 
+            id: result.insertId,
+            filename: req.file.filename,
+            originalName: req.file.originalname,
+            size: fileSizeMB
+        });
+    });
+});
+
+// Serve uploaded files
+app.use('/uploads', express.static(uploadsDir));
+
 // ==========================================
 // ISSUANCES API ENDPOINTS
 // ==========================================
 
-// GET all issuances
 app.get('/api/issuances', (req, res) => {
     const sql = "SELECT * FROM issuances ORDER BY id DESC";
     db.query(sql, (err, results) => {
@@ -150,7 +281,6 @@ app.get('/api/issuances', (req, res) => {
     });
 });
 
-// GET issuance by ID
 app.get('/api/issuances/:id', (req, res) => {
     const sql = "SELECT * FROM issuances WHERE id = ?";
     db.query(sql, [req.params.id], (err, results) => {
@@ -160,7 +290,6 @@ app.get('/api/issuances/:id', (req, res) => {
     });
 });
 
-// POST new issuance
 app.post('/api/issuances', (req, res) => {
     const { certNumber, type, name, barangay, issuanceDate, status } = req.body;
     const sql = "INSERT INTO issuances (certNumber, type, name, barangay, issuanceDate, status) VALUES (?, ?, ?, ?, ?, ?)";
@@ -170,7 +299,6 @@ app.post('/api/issuances', (req, res) => {
     });
 });
 
-// GET next certificate number (auto-generate)
 app.get('/api/issuances/next-cert-number/:type', (req, res) => {
     const type = req.params.type;
     let prefix = 'BC';
@@ -200,7 +328,6 @@ app.get('/api/issuances/next-cert-number/:type', (req, res) => {
 // BARANGAYS API ENDPOINTS
 // ==========================================
 
-// GET all barangays
 app.get('/api/barangays', (req, res) => {
     const sql = "SELECT * FROM barangays ORDER BY name ASC";
     db.query(sql, (err, results) => {
@@ -227,19 +354,16 @@ app.get('/api/barangays', (req, res) => {
 // TEMPLATES API ENDPOINTS
 // ==========================================
 
-// GET all templates
 app.get('/api/templates', (req, res) => {
     const sql = "SELECT * FROM templates";
     db.query(sql, (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
-        // Convert array to object with type as key
         const templates = {};
         results.forEach(t => { templates[t.type] = t.content; });
         res.json(templates);
     });
 });
 
-// UPDATE template
 app.put('/api/templates/:type', (req, res) => {
     const { content } = req.body;
     const sql = "UPDATE templates SET content = ? WHERE type = ?";
@@ -250,15 +374,13 @@ app.put('/api/templates/:type', (req, res) => {
 });
 
 // ==========================================
-// USERS API ENDPOINTS (for management)
+// USERS API ENDPOINTS
 // ==========================================
 
-// GET all users
 app.get('/api/users', (req, res) => {
     const sql = "SELECT * FROM users ORDER BY id DESC";
     db.query(sql, (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
-        // Parse permissions for each user
         results.forEach(user => {
             if (user.permissions && typeof user.permissions === 'string') {
                 try { user.permissions = JSON.parse(user.permissions); } 
@@ -269,7 +391,6 @@ app.get('/api/users', (req, res) => {
     });
 });
 
-// GET user by ID
 app.get('/api/users/:id', (req, res) => {
     const sql = "SELECT * FROM users WHERE id = ?";
     db.query(sql, [req.params.id], (err, results) => {
@@ -284,18 +405,22 @@ app.get('/api/users/:id', (req, res) => {
     });
 });
 
-// UPDATE user (role and permissions)
 app.put('/api/users/:id', (req, res) => {
     const { role, permissions } = req.body;
+    console.log('UPDATE USER - Request params:', req.params.id);
+    console.log('UPDATE USER - Request body:', req.body);
     const permissionsJson = JSON.stringify(permissions);
     const sql = "UPDATE users SET role = ?, permissions = ? WHERE id = ?";
     db.query(sql, [role, permissionsJson, req.params.id], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) {
+            console.error('UPDATE USER - Error:', err.message);
+            return res.status(500).json({ error: err.message });
+        }
+        console.log('UPDATE USER - Success, result:', result);
         res.json({ success: true });
     });
 });
 
-// UPDATE user profile (name and email)
 app.put('/api/users/:id/profile', (req, res) => {
     const { name, email } = req.body;
     const sql = "UPDATE users SET name = ?, email = ? WHERE id = ?";
@@ -305,7 +430,6 @@ app.put('/api/users/:id/profile', (req, res) => {
     });
 });
 
-// DELETE user
 app.delete('/api/users/:id', (req, res) => {
     const sql = "DELETE FROM users WHERE id = ?";
     db.query(sql, [req.params.id], (err, result) => {

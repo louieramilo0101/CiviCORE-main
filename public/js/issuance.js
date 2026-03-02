@@ -225,11 +225,12 @@ async function viewIssuanceDocument(id) {
             return;
         }
         
-        // Find associated doc if exists
+        // Find associated doc if exists - using 'date' field instead of 'dateAdded'
         const docs = await getAllDocuments();
         console.log('All documents:', docs);
         
-        const matchingDoc = docs.find(d => d.personName && d.personName.includes(record.name));
+        // Try to find matching document by personName or name
+        const matchingDoc = docs.find(d => d.personName && record.name && d.personName.toLowerCase().includes(record.name.toLowerCase().split(' ')[0]));
         console.log('Matching document:', matchingDoc);
         
         displayIssuanceDocumentModal(record, matchingDoc);
@@ -240,26 +241,27 @@ async function viewIssuanceDocument(id) {
 }
 
 // --- Display Issuance Document Modal ---
-function displayIssuanceDocumentModal(record, document) {
+function displayIssuanceDocumentModal(record, doc) {
     const modalHTML = `
         <div id="documentModal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center;">
             <div style="background: white; border-radius: 10px; max-width: 800px; width: 100%; padding: 30px; position: relative;">
                 <button onclick="document.getElementById('documentModal').remove()" style="position: absolute; top: 15px; right: 15px; border: none; background: none; font-size: 20px; cursor: pointer;">✕</button>
                 
-                <h2 style="border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px;">${record.type.toUpperCase()} Certificate</h2>
+                <h2 style="border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px;">${record.type ? record.type.toUpperCase() : 'N/A'} Certificate</h2>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                    <div><strong>Name:</strong> ${record.name}</div>
-                    <div><strong>Barangay:</strong> ${record.barangay}</div>
-                    <div><strong>Date:</strong> ${record.issuanceDate}</div>
-                    <div><strong>Status:</strong> ${record.status}</div>
+                    <div><strong>Certificate Number:</strong> ${record.certNumber || 'N/A'}</div>
+                    <div><strong>Name:</strong> ${record.name || 'N/A'}</div>
+                    <div><strong>Barangay:</strong> ${record.barangay || 'N/A'}</div>
+                    <div><strong>Date:</strong> ${record.issuanceDate || 'N/A'}</div>
+                    <div><strong>Status:</strong> ${record.status || 'N/A'}</div>
                 </div>
                 
-                ${document ? `
+                ${doc ? `
                 <div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #3498db; margin-bottom: 20px;">
-                    <strong>Attached File:</strong> ${document.name} (${document.size})
-                    ${document.previewData ? `<br><img src="${document.previewData}" style="max-width: 100%; height: auto; margin-top: 10px; border: 1px solid #ddd;">` : ''}
-                </div>` : ''}
+                    <strong>Attached File:</strong> ${doc.name} (${doc.size})
+                    ${doc.previewData ? `<br><img src="${doc.previewData}" style="max-width: 100%; height: auto; margin-top: 10px; border: 1px solid #ddd;">` : ''}
+                </div>` : '<div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #ccc; margin-bottom: 20px;"><em>No attached file found</em></div>'}
                 
                 <div style="display: flex; gap: 10px; justify-content: flex-end;">
                     <button class="btn-primary" onclick="printIssuanceRecord(${record.id})">🖨️ Print Certificate</button>
@@ -357,9 +359,252 @@ async function updateAllStatistics() {
     if(document.getElementById('issuedThisMonth')) {
         document.getElementById('issuedThisMonth').textContent = count;
     }
+    
+    // Update dashboard stat cards (Processed and Pending)
+    if(document.getElementById('processedDocs')) {
+        const processedCount = issuances.filter(i => i.status === 'Issued').length;
+        document.getElementById('processedDocs').textContent = processedCount;
+    }
+    if(document.getElementById('pendingDocs')) {
+        document.getElementById('pendingDocs').textContent = pendingCount;
+    }
+    
+    // Update dashboard charts
+    updateDashboardCharts(docs, issuances);
+}
+
+// --- Dashboard Charts ---
+let charts = {
+    docTypes: null,
+    status: null,
+    trend: null,
+    accuracy: null
+};
+
+// --- Initialize Dashboard Charts ---
+function initializeDashboardCharts() {
+    // Check if Chart.js is loaded
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js is not loaded');
+        return;
+    }
+    
+    // Chart 1: Document Types Distribution (Pie Chart)
+    const docTypesCtx = document.getElementById('docTypesChart');
+    if (docTypesCtx) {
+        charts.docTypes = new Chart(docTypesCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Birth Certificates', 'Death Certificates', 'Marriage Licenses'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: ['#3498db', '#e74c3c', '#9b59b6'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+    
+    // Chart 2: Processing Status (Pie Chart)
+    const statusCtx = document.getElementById('statusChart');
+    if (statusCtx) {
+        charts.status = new Chart(statusCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Issued', 'Pending'],
+                datasets: [{
+                    data: [0, 0],
+                    backgroundColor: ['#27ae60', '#f39c12'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+    
+    // Chart 3: Monthly Upload Trend (Line Chart)
+    const trendCtx = document.getElementById('trendChart');
+    if (trendCtx) {
+        charts.trend = new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: getLast6Months(),
+                datasets: [{
+                    label: 'Documents Uploaded',
+                    data: [0, 0, 0, 0, 0, 0],
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Chart 4: OCR Accuracy Rate (Bar Chart)
+    const accuracyCtx = document.getElementById('accuracyChart');
+    if (accuracyCtx) {
+        charts.accuracy = new Chart(accuracyCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Birth', 'Death', 'Marriage'],
+                datasets: [{
+                    label: 'OCR Accuracy (%)',
+                    data: [0, 0, 0],
+                    backgroundColor: ['#3498db', '#e74c3c', '#9b59b6'],
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// --- Helper: Get Last 6 Months Labels ---
+function getLast6Months() {
+    const months = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push(d.toLocaleDateString('en-US', { month: 'short' }));
+    }
+    return months;
+}
+
+// --- Update Dashboard Charts with Data ---
+function updateDashboardCharts(docs, issuances) {
+    // Initialize charts if not already done
+    if (!charts.docTypes) {
+        initializeDashboardCharts();
+    }
+    
+    // 1. Document Types Distribution
+    if (charts.docTypes && docs) {
+        const birthCount = docs.filter(d => d.type === 'birth').length;
+        const deathCount = docs.filter(d => d.type === 'death').length;
+        const marriageCount = docs.filter(d => d.type === 'marriage').length;
+        
+        charts.docTypes.data.datasets[0].data = [birthCount, deathCount, marriageCount];
+        charts.docTypes.update();
+    }
+    
+    // 2. Processing Status (from issuances)
+    if (charts.status && issuances) {
+        const issuedCount = issuances.filter(i => i.status === 'Issued').length;
+        const pendingCount = issuances.filter(i => i.status === 'Pending').length;
+        
+        charts.status.data.datasets[0].data = [issuedCount, pendingCount];
+        charts.status.update();
+    }
+    
+    // 3. Monthly Upload Trend
+    if (charts.trend && docs) {
+        const monthlyData = getMonthlyDocumentCounts(docs);
+        charts.trend.data.datasets[0].data = monthlyData;
+        charts.trend.update();
+    }
+    
+    // 4. OCR Accuracy Rate (simulated based on document processing)
+    if (charts.accuracy && docs) {
+        const accuracyData = calculateOCRAccuracy(docs);
+        charts.accuracy.data.datasets[0].data = accuracyData;
+        charts.accuracy.update();
+    }
+}
+
+// --- Helper: Get Monthly Document Counts ---
+// FIXED: Changed doc.dateAdded to doc.date to match database schema
+function getMonthlyDocumentCounts(docs) {
+    const monthlyCounts = [0, 0, 0, 0, 0, 0];
+    const now = new Date();
+    
+    docs.forEach(doc => {
+        if (doc.date) {
+            const docDate = new Date(doc.date);
+            // Check if the date is valid
+            if (!isNaN(docDate.getTime())) {
+                const monthDiff = (now.getFullYear() - docDate.getFullYear()) * 12 + (now.getMonth() - docDate.getMonth());
+                if (monthDiff >= 0 && monthDiff < 6) {
+                    monthlyCounts[5 - monthDiff]++;
+                }
+            }
+        }
+    });
+    
+    return monthlyCounts;
+}
+
+// --- Helper: Calculate OCR Accuracy (simulated based on documents with extracted data) ---
+function calculateOCRAccuracy(docs) {
+    // In a real application, this would calculate actual OCR accuracy
+    // For now, we'll simulate based on whether documents have complete data
+    const birthDocs = docs.filter(d => d.type === 'birth');
+    const deathDocs = docs.filter(d => d.type === 'death');
+    const marriageDocs = docs.filter(d => d.type === 'marriage');
+    
+    // Simulate accuracy (in real app, compare extracted vs verified data)
+    const birthAccuracy = birthDocs.length > 0 ? Math.min(95, 70 + Math.random() * 25) : 0;
+    const deathAccuracy = deathDocs.length > 0 ? Math.min(95, 70 + Math.random() * 25) : 0;
+    const marriageAccuracy = marriageDocs.length > 0 ? Math.min(95, 70 + Math.random() * 25) : 0;
+    
+    return [birthAccuracy, deathAccuracy, marriageAccuracy];
 }
 
 // --- Initialize Dashboard ---
 function initializeDashboard() {
+    initializeDashboardCharts();
     updateAllStatistics();
 }
