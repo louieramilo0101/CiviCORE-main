@@ -621,13 +621,13 @@ async function performEditAccount(userId, newRole, name, email) {
         // Update profile (name and email)
         const result = await updateUserProfile(userId, name, email);
         
-        // If role was changed, update it separately (need to include permissions too!)
-        if (newRole && currentUser.role === 'Super Admin' && currentUser.permissions.includes('Manage Users')) {
+        // If role was changed, update it through the API
+        // The server will automatically assign the correct permissions based on the new role
+        if (newRole) {
             const user = await getUserById(userId);
             if (user && user.role !== newRole) {
-                // Need to pass permissions when updating role
-                const userPermissions = user.permissions || [];
-                await updateUser({ id: userId, role: newRole, permissions: userPermissions });
+                // Server handles permissions automatically based on role
+                await updateUser({ id: userId, role: newRole, permissions: null });
             }
         }
         
@@ -636,22 +636,19 @@ async function performEditAccount(userId, newRole, name, email) {
             showSuccessModal('Account has been updated successfully!');
             closeEditAccountModal();
             
-            // If it's the current user being edited, fetch the FULL updated user from backend
+            // Always fetch the FULL updated user from backend after any role change
             // This ensures role AND permissions are both updated correctly
+            const freshUser = await getUserById(userId);
+            
+            // If it's the current user being edited, update currentUser and localStorage
             if (currentUser.id === userId) {
-                const freshUser = await getUserById(userId);
                 currentUser = freshUser;
                 // Also update localStorage to persist the change
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                // Reinitialize UI to reflect new permissions
-                await initializeAppUI();
-            } else {
-                // For other users, just refresh the display
-                const updatedUser = await getUserById(userId);
-                displayAccountDetails(updatedUser);
-                // Refresh the accounts list
-                loadAccounts();
             }
+            
+            // Reinitialize UI to reflect new permissions (for all cases)
+            await initializeAppUI();
         } else {
             showAlertModal('Error', result.message || 'Failed to update account. Please try again.', 'error');
         }
