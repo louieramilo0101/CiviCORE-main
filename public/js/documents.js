@@ -76,7 +76,7 @@ async function handleFiles(files) {
                 <div class="icon">📄</div>
                 <p><strong>Selected:</strong> ${uploadedFile.name}</p>
                 <p style="font-size: 12px; color: var(--text-light);">${(uploadedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                <p style="font-size: 12px; color: #27ae60;">✓ File ready - Click "Process with OCR" to upload</p>
+                <p style="font-size: 12px; color: #27ae60;">✓ File ready - Click "Process with EasyOCR" to upload</p>
             `;
         }
     }
@@ -99,44 +99,83 @@ if (processBtn) {
         }
         
         // Show processing status
-        processBtn.textContent = 'Processing...';
+        processBtn.textContent = 'Processing with EasyOCR...';
         processBtn.disabled = true;
         
         try {
-            // Upload file to server
-            const result = await uploadDocument(uploadedFile, selectedDocType, '', 'Poblacion');
+            // Upload file to server first
+            const uploadResult = await uploadDocument(uploadedFile, selectedDocType, '', 'Poblacion');
             
-            if (result.success) {
-                showUploadSuccess(`File "${uploadedFile.name}" uploaded successfully!<br><br><strong>Document Type:</strong> ${selectedDocType}<br><strong>File Size:</strong> ${result.size}`);
-                
-                // Reset upload area
-                const uploadAreaEl = document.getElementById('uploadArea');
-                if (uploadAreaEl) {
-                    uploadAreaEl.innerHTML = `
-                        <div class="icon">📁</div>
-                        <p>Click or drag files here to upload</p>
-                        <p style="font-size: 12px; color: var(--text-light);">Supported: PDF, JPG, PNG</p>
-                    `;
-                }
-                
-                // Reset file input
-                fileInput.value = '';
-                uploadedFile = null;
-                
-                // Reset document type selection
-                document.querySelectorAll('.doc-type-btn').forEach(b => b.classList.remove('selected'));
-                selectedDocType = null;
-                
-                // Refresh documents list
-                loadDocuments();
-            } else {
-                showUploadError('Upload failed: ' + (result.error || 'Unknown error'));
+            if (!uploadResult.success) {
+                showUploadError('Upload failed: ' + (uploadResult.error || 'Unknown error'));
+                return;
             }
+            
+            // Now process with EasyOCR
+            const filePath = `uploads/${uploadResult.filename}`;
+            processBtn.textContent = 'Running EasyOCR...';
+            
+            try {
+                const ocrResult = await processOCR(filePath);
+                
+                if (ocrResult.success) {
+                    const extractedText = ocrResult.text || '';
+                    const confidence = ocrResult.confidence || 0;
+                    const wordsFound = ocrResult.words_found || 0;
+                    
+                    showUploadSuccess(
+                        `File "${uploadedFile.name}" uploaded and processed with EasyOCR!<br><br>` +
+                        `<strong>Document Type:</strong> ${selectedDocType}<br>` +
+                        `<strong>File Size:</strong> ${uploadResult.size}<br>` +
+                        `<strong>Words Found:</strong> ${wordsFound}<br>` +
+                        `<strong>Confidence:</strong> ${(confidence * 100).toFixed(1)}%<br><br>` +
+                        `<strong>Extracted Text:</strong><br>` +
+                        `<div style="max-height: 150px; overflow-y: auto; background: #f5f5f5; padding: 10px; border-radius: 4px; text-align: left; font-size: 12px;">${extractedText.substring(0, 500)}${extractedText.length > 500 ? '...' : ''}</div>`
+                    );
+                } else {
+                    showUploadSuccess(
+                        `File "${uploadedFile.name}" uploaded successfully!<br><br>` +
+                        `<strong>Document Type:</strong> ${selectedDocType}<br>` +
+                        `<strong>File Size:</strong> ${uploadResult.size}<br><br>` +
+                        `<strong>Note:</strong> OCR processing failed: ${ocrResult.error || 'Unknown error'}`
+                    );
+                }
+            } catch (ocrError) {
+                console.error('OCR Error:', ocrError);
+                showUploadSuccess(
+                    `File "${uploadedFile.name}" uploaded successfully!<br><br>` +
+                    `<strong>Document Type:</strong> ${selectedDocType}<br>` +
+                    `<strong>File Size:</strong> ${uploadResult.size}<br><br>` +
+                    `<strong>Note:</strong> OCR processing encountered an error.`
+                );
+            }
+            
+            // Reset upload area
+            const uploadAreaEl = document.getElementById('uploadArea');
+            if (uploadAreaEl) {
+                uploadAreaEl.innerHTML = `
+                    <div class="icon">📁</div>
+                    <p>Click or drag files here to upload</p>
+                    <p style="font-size: 12px; color: var(--text-light);">Supported: PDF, JPG, PNG</p>
+                `;
+            }
+            
+            // Reset file input
+            fileInput.value = '';
+            uploadedFile = null;
+            
+            // Reset document type selection
+            document.querySelectorAll('.doc-type-btn').forEach(b => b.classList.remove('selected'));
+            selectedDocType = null;
+            
+            // Refresh documents list
+            loadDocuments();
+            
         } catch (error) {
             console.error('Upload error:', error);
             showUploadError('Upload failed: ' + error.message);
         } finally {
-            processBtn.textContent = 'Process with OCR';
+            processBtn.textContent = 'Process with EasyOCR';
             processBtn.disabled = false;
         }
     });

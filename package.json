@@ -16,7 +16,6 @@
     "express": "^5.2.1",
     "express-session": "^1.19.0",
     "multer": "^2.1.0",
-    "mysql2": "^3.17.1",
-    "tesseract.js": "^7.0.0"
+    "mysql2": "^3.17.1"
   }
 }

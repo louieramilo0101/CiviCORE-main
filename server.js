@@ -7,6 +7,7 @@ const path = require('path');
 const session = require('express-session');
 const multer = require('multer');
 const fs = require('fs');
+const { spawn } = require('child_process');
 
 const app = express();
 app.use(express.json());
@@ -72,7 +73,7 @@ db.connect((err) => {
         return;
     }
     console.log('✅ MySQL Connected successfully via Laragon!');
-    console.log('✓ OCR System Initialized and Ready');
+    console.log('✓ EasyOCR System Initialized and Ready');
 });
 
 // LOGIN ROUTE: This checks the database when you click Login
@@ -332,6 +333,81 @@ app.post('/api/documents/upload', upload.single('file'), (req, res) => {
 
 // Serve uploaded files
 app.use('/uploads', express.static(uploadsDir));
+
+// ==========================================
+// EASYOCR PROCESSING ENDPOINT
+// ==========================================
+
+// OCR processing endpoint - uses Python EasyOCR script
+app.post('/api/ocr/process', (req, res) => {
+    const { filePath, languages } = req.body;
+    
+    if (!filePath) {
+        return res.status(400).json({ success: false, error: 'No file path provided' });
+    }
+    
+    // Construct full path to uploaded file
+    const fullPath = path.join(__dirname, filePath);
+    
+    // Check if file exists
+    if (!fs.existsSync(fullPath)) {
+        return res.status(404).json({ success: false, error: 'File not found' });
+    }
+    
+    console.log(`🔍 Processing EasyOCR for: ${fullPath}`);
+    
+    // Determine file type
+    const ext = path.extname(fullPath).toLowerCase();
+    const fileType = ext === '.pdf' ? 'pdf' : 'image';
+    
+    // Build Python command arguments
+    const pythonArgs = [
+        path.join(__dirname, 'ocr_processor.py'),
+        fullPath,
+        '--lang', languages || 'en,tl',
+        '--type', fileType
+    ];
+    
+    // Spawn Python process
+    const pythonProcess = spawn('python', pythonArgs, {
+        cwd: __dirname
+    });
+    
+    let stdout = '';
+    let stderr = '';
+    
+    pythonProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
+    });
+    
+    pythonProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+    });
+    
+    pythonProcess.on('close', (code) => {
+        if (code !== 0) {
+            console.error('❌ EasyOCR Processing failed:', stderr);
+            return res.status(500).json({ 
+                success: false, 
+                error: 'OCR processing failed',
+                details: stderr
+            });
+        }
+        
+        try {
+            const result = JSON.parse(stdout);
+            console.log(`✅ EasyOCR Complete - Words found: ${result.words_found || 0}`);
+            res.json(result);
+        } catch (parseError) {
+            console.error('❌ JSON parse error:', parseError);
+            res.status(500).json({ 
+                success: false, 
+                error: 'Failed to parse OCR results',
+                rawOutput: stdout
+            });
+        }
+    });
+});
 
 // ==========================================
 // ISSUANCES API ENDPOINTS

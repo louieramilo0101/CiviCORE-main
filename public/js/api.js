@@ -1,6 +1,5 @@
 // ==========================================
-// API LAYER - MySQL Da
-// abase via Node.js Server
+// API LAYER - MySQL Database via Node.js Server
 // ==========================================
 
 const API_BASE = 'http://localhost:5000';
@@ -56,6 +55,16 @@ async function uploadDocument(file, docType, personName, barangay) {
         console.error('Upload error:', error);
         throw error;
     }
+}
+
+// OCR Processing API - EasyOCR
+async function processOCR(filePath, languages = 'en,tl') {
+    const response = await fetch(`${API_BASE}/api/ocr/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filePath, languages })
+    });
+    return await response.json();
 }
 
 // Issuances API
