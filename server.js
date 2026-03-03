@@ -363,6 +363,14 @@ app.post('/api/issuances', (req, res) => {
     });
 });
 
+app.delete('/api/issuances/:id', (req, res) => {
+    const sql = "DELETE FROM issuances WHERE id = ?";
+    db.query(sql, [req.params.id], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
 app.get('/api/issuances/next-cert-number/:type', (req, res) => {
     const type = req.params.type;
     let prefix = 'BC';

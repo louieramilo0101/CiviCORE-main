@@ -1,5 +1,6 @@
 // ==========================================
-// API LAYER - MySQL Database via Node.js Server
+// API LAYER - MySQL Da
+// abase via Node.js Server
 // ==========================================
 
 const API_BASE = 'http://localhost:5000';
@@ -79,6 +80,13 @@ async function saveIssuance(record) {
 
 async function getNextCertNumber(type) {
     const response = await fetch(`${API_BASE}/api/issuances/next-cert-number/${type}`);
+    return await response.json();
+}
+
+async function deleteIssuance(id) {
+    const response = await fetch(`${API_BASE}/api/issuances/${id}`, {
+        method: 'DELETE'
+    });
     return await response.json();
 }
 

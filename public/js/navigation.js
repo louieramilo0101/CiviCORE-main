@@ -43,7 +43,7 @@ function navigateToPage(pageId) {
         setTimeout(() => {
             const mapContainer = document.getElementById('mapContainer');
             if (mapContainer) mapContainer.style.display = 'block';
-            setTimeout(initializeNaicMap, 200);
+            setTimeout(initializeMappingPage, 200);
         }, 100);
     }
 }

@@ -1,12 +1,9 @@
-# Bug Fixes TODO List
+# TODO: Add Delete Button in Issuance Table
 
-## Bug 1: Role updates but permissions not refreshed → UI incomplete
-- [ ] Fix performEditAccount() in accounts.js to fetch full user after update
+## Tasks:
+- [ ] 1. Add deleteIssuance API function in public/js/api.js
+- [ ] 2. Add DELETE endpoint in server.js
+- [ ] 3. Add delete button and confirmation modal in public/js/issuance.js
+- [ ] 4. Test the implementation
 
-## Bug 2: Old session UI persists until refresh
-- [ ] Create initializeAppUI() function in accounts.js
-- [ ] Call initializeAppUI() in loginUser() in auth.js
-- [ ] Call initializeAppUI() in performEditAccount() after updating own account
-
-## Consistency Fix
-- [ ] Make permission checks consistent with null checks everywhere
+## Status: In Progress

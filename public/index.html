@@ -542,6 +542,7 @@
                         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                             <thead>
                                 <tr style="background: var(--light-bg); border-bottom: 2px solid #ddd;">
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Certificate No.</th>
                                     <th style="padding: 12px; text-align: left; font-weight: 600;">Certificate Type</th>
                                     <th style="padding: 12px; text-align: left; font-weight: 600;">Name</th>
                                     <th style="padding: 12px; text-align: left; font-weight: 600;">Barangay</th>
@@ -573,8 +574,9 @@
                             </select>
                         </div>
                         <div class="form-field">
-                            <label>Recipient Name</label>
-                            <input type="text" id="newCertName" placeholder="Full name">
+                            <label>Recipient Name <span style="color: red;">*</span></label>
+                            <input type="text" id="newCertName" placeholder="Full name" required>
+                            <span id="nameError" style="color: red; font-size: 12px; display: none; margin-top: 5px;">⚠️ Please enter a Recipient Name</span>
                         </div>
                         <div class="form-field">
                             <label>Barangay</label>
@@ -587,8 +589,9 @@
                             </select>
                         </div>
                         <div class="form-field">
-                            <label>Issuance Date</label>
-                            <input type="date" id="newCertDate">
+                            <label>Issuance Date <span style="color: red;">*</span></label>
+                            <input type="date" id="newCertDate" required style="border-color: #e74c3c;">
+                            <span id="dateError" style="color: red; font-size: 12px; display: none; margin-top: 5px;">⚠️ Please select a Date of Issuance</span>
                         </div>
                         <div class="form-field">
                             <label>Status</label>

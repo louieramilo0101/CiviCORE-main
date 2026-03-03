@@ -9,6 +9,7 @@ async function initIssuancePage() {
     await loadBarangaysToDropdown();
     await generateCertNumber();
     await loadIssuanceData();
+    initializeDateInputValidation();
 }
 
 // --- Load Barangays to Dropdown ---
@@ -89,7 +90,7 @@ async function loadIssuanceTable(filterType = 'all') {
         }
         
         if (records.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #888;">No records found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #888;">No records found</td></tr>';
             return;
         }
         
@@ -99,21 +100,41 @@ async function loadIssuanceTable(filterType = 'all') {
             const statusColor = r.status === 'Issued' ? '#27ae60' : '#f39c12';
             
             row.innerHTML = `
+                <td style="padding: 12px; font-weight: 500;">${r.certNumber || 'N/A'}</td>
                 <td style="padding: 12px;">${r.type ? r.type.toUpperCase() : 'N/A'}</td>
                 <td style="padding: 12px;">${r.name || 'N/A'}</td>
                 <td style="padding: 12px;">${r.barangay || 'N/A'}</td>
                 <td style="padding: 12px;">${r.issuanceDate || 'N/A'}</td>
                 <td style="padding: 12px;"><span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 8px; border-radius: 4px;">${r.status || 'N/A'}</span></td>
                 <td style="padding: 12px;">
-                    <button class="btn-small" onclick="viewIssuanceDocument(${r.id})" style="background: #3498db; margin-right: 5px;">📄 View</button>
-                    <button class="btn-small" onclick="printIssuanceRecord(${r.id})" style="background: var(--secondary-color);">🖨️ Print</button>
+                    <div class="action-btn-group">
+                        <button class="action-btn view" onclick="viewIssuanceDocument(${r.id})" title="View">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                        <button class="action-btn print" onclick="printIssuanceRecord(${r.id})" title="Print">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                <rect x="6" y="14" width="12" height="8"></rect>
+                            </svg>
+                        </button>
+                        <button class="action-btn delete" onclick="openDeleteIssuanceModal(${r.id}, '${r.certNumber || ''}')" title="Delete">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </td>
             `;
             tbody.appendChild(row);
         });
     } catch (error) {
         console.error('Error loading issuance table:', error);
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: red;">Error loading data: ' + error.message + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: red;">Error loading data: ' + error.message + '</td></tr>';
     }
 }
 
@@ -145,7 +166,7 @@ async function searchCertificates() {
     tbody.innerHTML = '';
     
     if (filteredRecords.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #888;">No records found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #888;">No records found</td></tr>';
         return;
     }
     
@@ -155,33 +176,107 @@ async function searchCertificates() {
         const statusColor = r.status === 'Issued' ? '#27ae60' : '#f39c12';
         
         row.innerHTML = `
+            <td style="padding: 12px; font-weight: 500;">${r.certNumber || 'N/A'}</td>
             <td style="padding: 12px;">${r.type ? r.type.toUpperCase() : 'N/A'}</td>
             <td style="padding: 12px;">${r.name || 'N/A'}</td>
             <td style="padding: 12px;">${r.barangay || 'N/A'}</td>
             <td style="padding: 12px;">${r.issuanceDate || 'N/A'}</td>
             <td style="padding: 12px;"><span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 8px; border-radius: 4px;">${r.status || 'N/A'}</span></td>
             <td style="padding: 12px;">
-                <button class="btn-small" onclick="viewIssuanceDocument(${r.id})" style="background: #3498db; margin-right: 5px;">📄 View</button>
-                <button class="btn-small" onclick="printIssuanceRecord(${r.id})" style="background: var(--secondary-color);">🖨️ Print</button>
+                <div class="action-btn-group">
+                    <button class="action-btn view" onclick="viewIssuanceDocument(${r.id})" title="View">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                    <button class="action-btn print" onclick="printIssuanceRecord(${r.id})" title="Print">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                    </button>
+                    <button class="action-btn delete" onclick="openDeleteIssuanceModal(${r.id}, '${r.certNumber || ''}')" title="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                    </button>
+                </div>
             </td>
         `;
         tbody.appendChild(row);
     });
 }
 
+// --- Initialize Date Input Event Listeners ---
+function initializeDateInputValidation() {
+    const certDateInput = document.getElementById('newCertDate');
+    const dateError = document.getElementById('dateError');
+    
+    if (certDateInput) {
+        // Clear error when user starts typing/selecting a date
+        certDateInput.addEventListener('input', function() {
+            if (this.value) {
+                this.style.borderColor = '#28a745';
+                this.style.borderWidth = '1px';
+                if (dateError) {
+                    dateError.style.display = 'none';
+                }
+            } else {
+                this.style.borderColor = '#e74c3c';
+                this.style.borderWidth = '2px';
+                if (dateError) {
+                    dateError.style.display = 'block';
+                }
+            }
+        });
+    }
+}
+
 // --- Add New Issuance ---
 async function addNewIssuance() {
     const certNumber = document.getElementById('newCertNumber').value;
     const certType = document.getElementById('newCertType').value;
-    const certName = document.getElementById('newCertName').value;
+    const certNameInput = document.getElementById('newCertName');
+    const certName = certNameInput.value;
     const certBarangay = document.getElementById('newCertBarangay').value;
-    const certDate = document.getElementById('newCertDate').value;
+    const certDateInput = document.getElementById('newCertDate');
+    const certDate = certDateInput.value;
     const certStatus = document.getElementById('newCertStatus').value;
+    const dateError = document.getElementById('dateError');
+    const nameError = document.getElementById('nameError');
     
-    if (!certNumber || !certName) {
-        alert('Missing fields');
+    // Validate required fields - Recipient Name
+    if (!certName) {
+        // Show visual error - red border and error message
+        certNameInput.style.borderColor = '#e74c3c';
+        certNameInput.style.borderWidth = '2px';
+        nameError.style.display = 'block';
+        certNameInput.focus();
         return;
     }
+    
+    // Clear error styling when name is filled
+    certNameInput.style.borderColor = '#28a745';
+    certNameInput.style.borderWidth = '1px';
+    nameError.style.display = 'none';
+    
+    // Validate Date of Issuance is required
+    if (!certDate) {
+        // Show visual error - red border and error message
+        certDateInput.style.borderColor = '#e74c3c';
+        certDateInput.style.borderWidth = '2px';
+        dateError.style.display = 'block';
+        certDateInput.focus();
+        return;
+    }
+    
+    // Clear error styling when date is filled
+    certDateInput.style.borderColor = '#28a745';
+    certDateInput.style.borderWidth = '1px';
+    dateError.style.display = 'none';
     
     const result = await saveIssuance({
         certNumber,
@@ -195,9 +290,15 @@ async function addNewIssuance() {
     // Show success modal
     showSuccessModal('Certificate has been issued successfully!');
     
-    // Clear form fields
+    // Clear form fields and reset styles
     document.getElementById('newCertName').value = '';
     document.getElementById('newCertDate').value = '';
+    certDateInput.style.borderColor = '';
+    certDateInput.style.borderWidth = '';
+    dateError.style.display = 'none';
+    certNameInput.style.borderColor = '';
+    certNameInput.style.borderWidth = '';
+    nameError.style.display = 'none';
     
     // Generate new certificate number for next entry
     await generateCertNumber();
@@ -607,4 +708,113 @@ function calculateOCRAccuracy(docs) {
 function initializeDashboard() {
     initializeDashboardCharts();
     updateAllStatistics();
+}
+
+// --- Open Delete Issuance Modal ---
+function openDeleteIssuanceModal(id, certNumber) {
+    // Remove existing modal if any
+    const existing = document.getElementById('deleteIssuanceModal');
+    if (existing) existing.remove();
+
+    const modalHTML = `
+        <div id="deleteIssuanceModal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center;">
+            <div style="background: white; border-radius: 10px; max-width: 420px; width: 100%; padding: 30px; position: relative;">
+                <button onclick="closeDeleteIssuanceModal()" style="position: absolute; top: 15px; right: 15px; border: none; background: none; font-size: 20px; cursor: pointer;">✕</button>
+                
+                <h2 style="border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; color: #e74c3c;">Delete Certificate</h2>
+                
+                <p style="margin: 0 0 10px 0; color: #333;">
+                    You are about to delete:
+                    <strong>Certificate No: ${certNumber || id}</strong>
+                </p>
+                <p style="margin: 0 0 20px 0; color: #666; font-size: 13px;">
+                    This action cannot be undone. Enter your Super Admin password to confirm.
+                </p>
+
+                <form id="deleteIssuanceForm" onsubmit="handleConfirmDeleteIssuance(event, ${id})">
+                    <div class="form-field">
+                        <label>Super Admin Password *</label>
+                        <input type="password" id="deleteIssuancePassword" placeholder="Enter your password" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                    </div>
+
+                    <p id="deleteIssuanceError" style="display: none; margin-top: 10px; color: #c0392b; font-size: 13px;"></p>
+
+                    <div style="display: flex; gap: 10px; margin-top: 25px;">
+                        <button id="confirmDeleteIssuanceBtn" type="submit" class="btn-primary" style="flex: 1; background: #e74c3c;">Confirm Delete</button>
+                        <button type="button" onclick="closeDeleteIssuanceModal()" class="btn-primary" style="flex: 1; background: #95a5a6;">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// --- Close Delete Issuance Modal ---
+function closeDeleteIssuanceModal() {
+    const modal = document.getElementById('deleteIssuanceModal');
+    if (modal) modal.remove();
+}
+
+// --- Handle Confirm Delete Issuance ---
+async function handleConfirmDeleteIssuance(event, id) {
+    event.preventDefault();
+
+    const passwordInput = document.getElementById('deleteIssuancePassword');
+    const errorText = document.getElementById('deleteIssuanceError');
+    const confirmBtn = document.getElementById('confirmDeleteIssuanceBtn');
+
+    if (!passwordInput || !errorText || !confirmBtn) return;
+
+    const password = passwordInput.value.trim();
+    if (!password) {
+        errorText.textContent = 'Password is required.';
+        errorText.style.display = 'block';
+        return;
+    }
+
+    errorText.style.display = 'none';
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Deleting...';
+
+    try {
+        // Verify the current user's password
+        const response = await fetch('http://localhost:5000/api/verify-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                userId: currentUser.id, 
+                password: password 
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Password verified, now delete the issuance
+            const deleteResult = await deleteIssuance(id);
+            
+            if (deleteResult.success) {
+                closeDeleteIssuanceModal();
+                // Reload the table
+                loadIssuanceData();
+                // Show success modal
+                showSuccessModal('Certificate has been deleted successfully!');
+            } else {
+                errorText.textContent = deleteResult.error || 'Failed to delete certificate. Please try again.';
+                errorText.style.display = 'block';
+            }
+        } else {
+            errorText.textContent = data.message || 'Invalid password. Please try again.';
+            errorText.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error deleting issuance:', error);
+        errorText.textContent = 'Failed to connect to server. Make sure the server is running.';
+        errorText.style.display = 'block';
+    } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Confirm Delete';
+    }
 }
