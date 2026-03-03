@@ -87,17 +87,31 @@ app.post('/api/login', (req, res) => {
             const user = results[0];
             
             // Parse permissions from JSON string to array if it exists
-            if (user.permissions && typeof user.permissions === 'string') {
-                try {
-                    user.permissions = JSON.parse(user.permissions);
-                } catch (e) {
-                    user.permissions = [];
+            // Handle both string and already-parsed array cases
+            if (user.permissions) {
+                if (typeof user.permissions === 'string') {
+                    try {
+                        user.permissions = JSON.parse(user.permissions);
+                    } catch (e) {
+                        user.permissions = [];
+                    }
+                } else if (typeof user.permissions === 'object' && !Array.isArray(user.permissions)) {
+                    // If it's an object (MySQL JSON column), try to parse it
+                    try {
+                        user.permissions = JSON.parse(JSON.stringify(user.permissions));
+                    } catch (e) {
+                        user.permissions = [];
+                    }
                 }
+                // If it's already an array, keep it as is
+            } else {
+                user.permissions = [];
             }
             
             // Store user in session
             req.session.user = user;
             
+            console.log('Login - User permissions:', user.permissions);
             res.json({ success: true, user: user });
         } else {
             res.status(401).json({ success: false, message: "Invalid email or password" });
@@ -105,13 +119,63 @@ app.post('/api/login', (req, res) => {
     });
 });
 
-// SESSION VALIDATION: Check if user session is valid
+// SESSION VALIDATION: Check if user session is valid - ALWAYS fetch fresh data from database
 app.get('/api/session', (req, res) => {
     if (req.session && req.session.user) {
-        res.json({ 
-            success: true, 
-            user: req.session.user,
-            sessionId: req.sessionID 
+        // ALWAYS fetch fresh user data from database to get latest permissions
+        const userId = req.session.user.id;
+        const sql = "SELECT * FROM users WHERE id = ?";
+        
+        db.query(sql, [userId], (err, results) => {
+            if (err) {
+                console.error('Error fetching fresh user data:', err);
+                // If database query fails, fall back to session data
+                return res.json({ 
+                    success: true, 
+                    user: req.session.user,
+                    sessionId: req.sessionID 
+                });
+            }
+            
+            if (results.length === 0) {
+                // User was deleted from database, clear session
+                req.session.destroy();
+                return res.status(401).json({ 
+                    success: false, 
+                    message: "User not found" 
+                });
+            }
+            
+            // Parse permissions from fresh database data
+            const freshUser = results[0];
+            if (freshUser.permissions) {
+                if (typeof freshUser.permissions === 'string') {
+                    try {
+                        freshUser.permissions = JSON.parse(freshUser.permissions);
+                    } catch (e) {
+                        freshUser.permissions = [];
+                    }
+                } else if (typeof freshUser.permissions === 'object' && !Array.isArray(freshUser.permissions)) {
+                    try {
+                        freshUser.permissions = JSON.parse(JSON.stringify(freshUser.permissions));
+                    } catch (e) {
+                        freshUser.permissions = [];
+                    }
+                }
+            } else {
+                freshUser.permissions = [];
+            }
+            
+            console.log('Session validated - fresh permissions from DB:', freshUser.permissions);
+            
+            // Update session with fresh data
+            req.session.user = freshUser;
+            
+            res.json({ 
+                success: true, 
+                user: freshUser,
+                sessionId: req.sessionID 
+            });
         });
     } else {
         res.status(401).json({ 
@@ -409,7 +473,21 @@ app.put('/api/users/:id', (req, res) => {
     const { role, permissions } = req.body;
     console.log('UPDATE USER - Request params:', req.params.id);
     console.log('UPDATE USER - Request body:', req.body);
-    const permissionsJson = JSON.stringify(permissions);
+    
+    // Automatically assign correct permissions based on role
+    let updatedPermissions;
+    if (role === 'Super Admin') {
+        updatedPermissions = ["View Dashboard", "Upload Documents", "Manage Users", "Edit Permissions", "Mapping Analytics"];
+    } else if (role === 'Admin') {
+        updatedPermissions = ["View Dashboard", "Upload Documents", "Mapping Analytics", "View Reports"];
+    } else if (role === 'User') {
+        updatedPermissions = ["View Dashboard", "View Services"];
+    } else {
+        // For any other role or if role is not provided, use the provided permissions
+        updatedPermissions = permissions || [];
+    }
+    
+    const permissionsJson = JSON.stringify(updatedPermissions);
     const sql = "UPDATE users SET role = ?, permissions = ? WHERE id = ?";
     db.query(sql, [role, permissionsJson, req.params.id], (err, result) => {
         if (err) {
@@ -417,6 +495,7 @@ app.put('/api/users/:id', (req, res) => {
             return res.status(500).json({ error: err.message });
         }
         console.log('UPDATE USER - Success, result:', result);
+        console.log('UPDATE USER - Permissions set for role:', role, '->', updatedPermissions);
         res.json({ success: true });
     });
 });

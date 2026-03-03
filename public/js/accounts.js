@@ -13,6 +13,36 @@ let isLoadingAccounts = false;
 // Store pending edit data when password confirmation is needed
 let pendingEditData = null;
 
+// --- Initialize App UI (for Bug 2 Fix) ---
+// This function resets all UI state and reinitializes the interface
+// Call this after login and after role/permission changes
+async function initializeAppUI() {
+    console.log('Initializing App UI...');
+    
+    // Reset global UI state
+    selectedUserForActions = null;
+    
+    // Clear account details
+    const details = document.getElementById('accountDetailsContainer');
+    if (details) details.innerHTML = '';
+    
+    // Reload accounts + permissions
+    await loadAccounts();
+    await loadPermissions();
+    
+    // Also re-check admin access for navigation elements
+    if (typeof checkAdminAccess === 'function') {
+        checkAdminAccess();
+    }
+    
+    // Update user info display if exists
+    if (typeof updateUserInfo === 'function') {
+        updateUserInfo();
+    }
+    
+    console.log('App UI initialized successfully');
+}
+
 // --- Load Accounts List ---
 async function loadAccounts() {
     // Prevent concurrent calls
@@ -330,10 +360,10 @@ function openEditAccountConfirmModal(user, onConfirm) {
                     <strong>${user.name}</strong> (${user.role})
                 </p>
                 <p style="margin: 0 0 20px 0; color: #666; font-size: 13px;">
-                    Enter your Super Admin password to confirm this action.
+                    Enter your password to confirm this action.
                 </p>
 
-                <form id="editAccountConfirmForm" onsubmit="handleEditAccountConfirm(event, ${user.id}, ${onConfirm})">
+                <form id="editAccountConfirmForm" onsubmit="handleEditAccountConfirm(event, ${user.id}, '${onConfirm}')">
                     <div class="form-field">
                         <label>Your Password *</label>
                         <input type="password" id="editAccountConfirmPassword" placeholder="Enter your password" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
@@ -530,13 +560,17 @@ function closeEditAccountModal() {
 }
 
 // --- Handle Edit Account Form Submission ---
-async function handleEditAccount(event, userId) {
-    event.preventDefault();
+async function handleEditAccount(event, userId, name, email, newRole) {
+    // If called from handleEditAccountSubmit, event is a fake event object
+    // If name and email are not passed (undefined), get them from the form
     
-    const name = document.getElementById('editUserName').value;
-    const email = document.getElementById('editUserEmail').value;
-    const roleSelect = document.getElementById('editUserRole');
-    const newRole = roleSelect ? roleSelect.value : null;
+    // Only get values from form if they weren't passed as arguments
+    if (name === undefined || email === undefined) {
+        name = document.getElementById('editUserName').value;
+        email = document.getElementById('editUserEmail').value;
+        const roleSelect = document.getElementById('editUserRole');
+        newRole = roleSelect ? roleSelect.value : null;
+    }
     
     if (!name || !email) {
         showAlertModal('Validation Error', 'Please fill in all fields', 'error');
@@ -558,32 +592,27 @@ async function handleEditAccount(event, userId) {
     const isSelf = currentUser.id === userId;
     
     // Get the original user to check what is being changed
-    const originalUser = await getUserById(userId);
-    const roleChanged = newRole && originalUser && originalUser.role !== newRole;
-    
-    // Password confirmation is needed ONLY when:
-    // 1. Changing to or from Super Admin role (security critical)
-    // 2. Editing another user's account as Super Admin
-    const isOtherUser = originalUser && originalUser.id !== currentUser.id;
-    const needsConfirmation = (roleChanged && isSuperAdmin) || (isOtherUser && isSuperAdmin);
-    
-    console.log('handleEditAccount:', { userId, isSelf, isSuperAdmin, roleChanged, isOtherUser, needsConfirmation, newRole });
-    
-    if (needsConfirmation) {
-        // Store the pending edit data for use after password confirmation
-        pendingEditData = {
-            userId: userId,
-            newRole: newRole,
-            name: name,
-            email: email
-        };
-        // Open password confirmation modal before proceeding
-        openEditAccountConfirmModal(originalUser, 'performEditAccountWithPendingData');
-        return;
+    let originalUser = currentUser;
+    try {
+        originalUser = await getUserById(userId);
+    } catch (e) {
+        console.error('Error fetching original user:', e);
     }
     
-    // No confirmation needed, proceed directly (editing own account or no role change)
-    await performEditAccount(userId, newRole, name, email);
+    // Store the pending edit data for use after password confirmation
+    pendingEditData = {
+        userId: userId,
+        newRole: newRole,
+        name: name,
+        email: email
+    };
+    
+    // ALWAYS require password confirmation for ALL account edits
+    // This includes: editing own account, editing other users, changing roles
+    console.log('handleEditAccount: Password confirmation required for all edits', { userId, isSelf, isSuperAdmin, newRole });
+    
+    // Open password confirmation modal before proceeding
+    openEditAccountConfirmModal(originalUser, 'performEditAccountWithPendingData');
 }
 
 // --- Perform the actual edit ---
@@ -607,21 +636,22 @@ async function performEditAccount(userId, newRole, name, email) {
             showSuccessModal('Account has been updated successfully!');
             closeEditAccountModal();
             
-            // Refresh the user data
-            const updatedUser = await getUserById(userId);
-            displayAccountDetails(updatedUser);
-            
-            // If it's the current user, update the currentUser object
+            // If it's the current user being edited, fetch the FULL updated user from backend
+            // This ensures role AND permissions are both updated correctly
             if (currentUser.id === userId) {
-                currentUser.name = name;
-                currentUser.email = email;
-                if (newRole) {
-                    currentUser.role = newRole;
-                }
+                const freshUser = await getUserById(userId);
+                currentUser = freshUser;
+                // Also update localStorage to persist the change
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                // Reinitialize UI to reflect new permissions
+                await initializeAppUI();
+            } else {
+                // For other users, just refresh the display
+                const updatedUser = await getUserById(userId);
+                displayAccountDetails(updatedUser);
+                // Refresh the accounts list
+                loadAccounts();
             }
-            
-            // Refresh the accounts list
-            loadAccounts();
         } else {
             showAlertModal('Error', result.message || 'Failed to update account. Please try again.', 'error');
         }

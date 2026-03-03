@@ -1,21 +1,12 @@
-# Document Upload System Implementation - COMPLETED
+# Bug Fixes TODO List
 
-## Task: Fix document upload to work properly
+## Bug 1: Role updates but permissions not refreshed → UI incomplete
+- [ ] Fix performEditAccount() in accounts.js to fetch full user after update
 
-### Steps Completed:
-- [x] 1. Install multer package for file upload handling
-- [x] 2. Update server.js - Add multer middleware and file upload endpoint
-- [x] 3. Update api.js - Add file upload API function with error handling
-- [x] 4. Update documents.js - Add process button handler and improve upload flow
+## Bug 2: Old session UI persists until refresh
+- [ ] Create initializeAppUI() function in accounts.js
+- [ ] Call initializeAppUI() in loginUser() in auth.js
+- [ ] Call initializeAppUI() in performEditAccount() after updating own account
 
-### How It Works:
-1. User selects document type (birth/death/marriage)
-2. User clicks upload area or selects file
-3. User clicks "Process with OCR" button
-4. File is uploaded to server via multipart form data
-5. Server stores file in /uploads folder
-6. Document metadata is saved to database
-7. Success/error modal is displayed
-8. Documents list is refreshed
-
-### Status: COMPLETE ✅
+## Consistency Fix
+- [ ] Make permission checks consistent with null checks everywhere

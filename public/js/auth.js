@@ -43,25 +43,31 @@ document.addEventListener('keydown', (e) => {
 // ==========================================
 // SESSION VALIDATION ON PAGE LOAD
 // ==========================================
-function validateSession() {
-    // Check localStorage for saved user (persists after browser close)
-    const savedUser = localStorage.getItem('currentUser');
-    
-    if (savedUser) {
-        try {
-            currentUser = JSON.parse(savedUser);
-            console.log('Restored session for:', currentUser.name);
+async function validateSession() {
+    // ALWAYS validate session with server to get fresh user data from database
+    // This ensures permissions are always up-to-date - no caching issues!
+    // Session is maintained via cookies (express-session), no localStorage needed
+    try {
+        const response = await fetch('/api/session');
+        const data = await response.json();
+        
+        if (data.success && data.user) {
+            // Use fresh user data from server (includes latest permissions)
+            currentUser = data.user;
+            console.log('Session validated with server, fresh permissions:', currentUser.permissions);
             loginUser();
             return true;
-        } catch (e) {
-            console.error('Error parsing saved user:', e);
-            localStorage.removeItem('currentUser');
+        } else {
+            // Session is invalid
+            console.log('No active session');
+            currentUser = null;
             return false;
         }
+    } catch (err) {
+        console.error('Error validating session with server:', err);
+        currentUser = null;
+        return false;
     }
-    
-    console.log('No saved session found');
-    return false;
 }
 
 // ==========================================
@@ -167,6 +173,37 @@ if (loginForm) {
 }
 
 // ==========================================
+// PASSWORD TOGGLE BUTTON EVENT LISTENER
+// ==========================================
+// Add event listener for password toggle button when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    const passwordToggleBtn = document.querySelector('.password-toggle-btn');
+    if (passwordToggleBtn) {
+        passwordToggleBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const passwordInput = document.getElementById('password');
+            if (passwordInput) {
+                // Toggle password visibility
+                if (passwordInput.type === "password") {
+                    passwordInput.type = "text";
+                    this.classList.add("active");
+                    console.log('Password visibility: ON');
+                } else {
+                    passwordInput.type = "password";
+                    this.classList.remove("active");
+                    console.log('Password visibility: OFF');
+                }
+            } else {
+                console.error('Password input not found');
+            }
+        });
+        console.log('Password toggle button event listener attached');
+    } else {
+        console.error('Password toggle button not found!');
+    }
+});
+
+// ==========================================
 // LOGIN USER
 // ==========================================
 async function loginUser() {
@@ -177,11 +214,12 @@ async function loginUser() {
     updateUserInfo();
     checkAdminAccess();
     
+    // Initialize UI - this fixes Bug 2: ensures fresh UI state after login
+    await initializeAppUI();
+    
     // Load ALL data directly from API
     initializeDashboard();
     loadDocuments();
-    loadAccounts();
-    loadPermissions();
     initializeOCR();
 }
 
