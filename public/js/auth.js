@@ -259,12 +259,9 @@ function checkAdminAccess() {
     const editAccountBtn = document.getElementById('editAccountBtn');
     const deleteAccountBtn = document.getElementById('deleteAccountBtn');
     
-    // 1. Account Management (Super Admin/Admin)
-    if (currentUser.role === 'Super Admin' || currentUser.role === 'Admin') {
-        if (accountsLink) accountsLink.style.display = 'block';
-    } else {
-        if (accountsLink) accountsLink.style.display = 'none';
-    }
+    // 1. Account Management - ALL users should be able to see this to manage their own account
+    // Show for everyone: Super Admin, Admin, and regular Users
+    if (accountsLink) accountsLink.style.display = 'block';
     
     // 2. Upload (Admin/Super Admin)
     if (currentUser.role !== 'Admin' && currentUser.role !== 'Super Admin') {
@@ -287,11 +284,18 @@ function checkAdminAccess() {
         if (addUserBtn) addUserBtn.style.display = 'none';
     }
     
-    // 5. Edit Account Button - Only show if user has permission to manage users
+    // 5. Edit Account Button - Show if user has permission to manage users OR for all users to edit their own account
+    // All users should be able to edit their own account
     if (currentUser.permissions.includes('Manage Users')) {
         if (editAccountBtn) editAccountBtn.style.display = 'block';
     } else {
-        if (editAccountBtn) editAccountBtn.style.display = 'none';
+        // Check if user is logged in (they should be since we're in this function)
+        if (editAccountBtn && currentUser) {
+            // All logged-in users can edit their own account
+            editAccountBtn.style.display = 'block';
+        } else if (editAccountBtn) {
+            editAccountBtn.style.display = 'none';
+        }
     }
     
     // 6. Delete Account Button - Only Super Admin can delete accounts

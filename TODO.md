@@ -1,9 +1,5 @@
-# TODO: Add Delete Button in Issuance Table
+# Fixes Implemented
 
-## Tasks:
-- [ ] 1. Add deleteIssuance API function in public/js/api.js
-- [ ] 2. Add DELETE endpoint in server.js
-- [ ] 3. Add delete button and confirmation modal in public/js/issuance.js
-- [ ] 4. Test the implementation
-
-## Status: In Progress
+1. [x] Add password toggle to Add User modal (accounts.js)
+2. [x] Allow regular users to see Account Management in sidebar (auth.js)
+3. [x] Refresh account details after editing (accounts.js)

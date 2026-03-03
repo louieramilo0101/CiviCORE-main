@@ -70,6 +70,8 @@ async function loadAccounts() {
     
     // Get users from API based on role - Super Admin sees all, others only see themselves
     let users;
+    const accountsContainer = document.querySelector('.accounts-container');
+    
     try {
         if (currentUser.role === 'Super Admin') {
             console.log('Loading all users for Super Admin...');
@@ -82,6 +84,8 @@ async function loadAccounts() {
             if (permissionsSection) permissionsSection.style.display = 'block';
             // Show Add User button for Super Admin
             if (addUserBtn) addUserBtn.style.display = 'block';
+            // Remove sidebar-hidden class for Super Admin
+            if (accountsContainer) accountsContainer.classList.remove('sidebar-hidden');
         } else {
             // Non-Super Admin users can only see their own account
             users = [currentUser];
@@ -91,6 +95,8 @@ async function loadAccounts() {
             if (permissionsSection) permissionsSection.style.display = 'block';
             // Hide Add User button for non-Super Admin
             if (addUserBtn) addUserBtn.style.display = 'none';
+            // Add sidebar-hidden class for Admin/User to expand the details section
+            if (accountsContainer) accountsContainer.classList.add('sidebar-hidden');
         }
     } catch (error) {
         console.error('Error loading users:', error);
@@ -647,6 +653,13 @@ async function performEditAccount(userId, newRole, name, email) {
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
             }
             
+            // Fix #3: Display the updated user's details immediately after editing
+            // This ensures the admin sees the updated info right away without needing to refresh
+            if (selectedUserForActions && selectedUserForActions.id === userId) {
+                selectedUserForActions = freshUser;
+                displayAccountDetails(freshUser);
+            }
+            
             // Reinitialize UI to reflect new permissions (for all cases)
             await initializeAppUI();
         } else {
@@ -733,7 +746,7 @@ function openAddUserModal() {
         return;
     }
 
-    // Create modal HTML
+    // Create modal HTML with password toggle
     const modalHTML = `
         <div id="addUserModal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center;">
             <div style="background: white; border-radius: 10px; max-width: 500px; width: 100%; padding: 30px; position: relative; max-height: 90vh; overflow-y: auto;">
@@ -754,7 +767,19 @@ function openAddUserModal() {
                     
                     <div class="form-field" style="margin-top: 15px;">
                         <label>Password *</label>
-                        <input type="password" id="newUserPassword" placeholder="Enter password" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                        <div class="password-input-wrapper" style="position: relative;">
+                            <input type="password" id="newUserPassword" placeholder="Enter password" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; padding-right: 45px;">
+                            <button type="button" class="password-toggle-btn" onclick="toggleAddUserPasswordVisibility(this)" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center; color: var(--text-light);">
+                                <svg class="eye-closed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                </svg>
+                                <svg class="eye-open" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px; display: none;">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="form-field" style="margin-top: 15px;">
@@ -782,6 +807,23 @@ function openAddUserModal() {
     
     // Add modal to page
     document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// --- Toggle Password Visibility for Add User Modal ---
+function toggleAddUserPasswordVisibility(btn) {
+    const passwordInput = btn.parentElement.querySelector('#newUserPassword');
+    const eyeClosed = btn.querySelector('.eye-closed');
+    const eyeOpen = btn.querySelector('.eye-open');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        eyeClosed.style.display = 'none';
+        eyeOpen.style.display = 'block';
+    } else {
+        passwordInput.type = 'password';
+        eyeClosed.style.display = 'block';
+        eyeOpen.style.display = 'none';
+    }
 }
 
 // --- Close Add User Modal ---
