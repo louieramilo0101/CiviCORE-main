@@ -530,10 +530,11 @@
                             <input type="text" id="certificateSearch" placeholder="Search by certificate #, recipient name, or type..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;" onkeyup="searchCertificates()">
                         </div>
                         <div>
-                            <label style="font-weight: 600; margin-bottom: 10px; display: block;">🖨️ Actions:</label>
-                            <div style="display: flex; gap: 10px;">
-                                <button class="btn-primary" onclick="printSelectedIssuance()" style="flex: 1; background: #27ae60;">📄 Print Selected</button>
-                                <button class="btn-primary" onclick="printAllIssuance()" style="flex: 1; background: #2980b9;">🖨️ Print All</button>
+                            <label style="font-weight: 600; margin-bottom: 10px; display: block;">⚙️ Actions:</label>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button class="btn-primary" onclick="printSelectedIssuance()" style="flex: 1; background: #27ae60; min-width: 120px;">📄 Print Selected</button>
+                                <button class="btn-primary" onclick="printAllIssuance()" style="flex: 1; background: #2980b9; min-width: 120px;">🖨️ Print All</button>
+                                <button class="btn-primary danger" id="deleteSelectedBtn" onclick="deleteSelectedIssuance()" style="flex: 1; background: #e74c3c; min-width: 120px; display: none;" title="Delete Selected">🗑️ Delete Selected</button>
                             </div>
                         </div>
                     </div>
@@ -542,7 +543,24 @@
                         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                             <thead>
                                 <tr style="background: var(--light-bg); border-bottom: 2px solid #ddd;">
-                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Certificate No.</th>
+                                    <th class="checkbox-column checkbox-hidden" style="padding: 12px; text-align: center; font-weight: 600; width: 50px;">
+                                        <label class="checkbox-container">
+                                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
+                                            <span class="checkbox-custom"></span>
+                                        </label>
+                                    </th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600; white-space: nowrap;">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <button class="toggle-checkbox-btn" id="toggleCheckboxesBtn" onclick="toggleCheckboxes()" title="Toggle Checkboxes" style="padding: 6px 10px; background: #9b59b6; color: white; border: none; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s;">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                                                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                                                </svg>
+                                            </button>
+                                            <span>Certificate No.</span>
+                                        </div>
+                                    </th>
                                     <th style="padding: 12px; text-align: left; font-weight: 600;">Certificate Type</th>
                                     <th style="padding: 12px; text-align: left; font-weight: 600;">Name</th>
                                     <th style="padding: 12px; text-align: left; font-weight: 600;">Barangay</th>

@@ -1463,3 +1463,147 @@ body {
 .modal-container.success-modal::before {
     background: linear-gradient(90deg, #27ae60, #229954);
 }
+
+/* ===== CHECKBOX STYLES FOR ISSUANCE TABLE ===== */
+.checkbox-container {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    padding-left: 25px;
+    cursor: pointer;
+    user-select: none;
+    margin: 0;
+}
+
+.checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkbox-custom {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 18px;
+    width: 18px;
+    background-color: #fff;
+    border: 2px solid #d4a574;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.checkbox-container:hover .checkbox-custom {
+    background-color: #f5e6d3;
+    border-color: #c49a6c;
+}
+
+.checkbox-container input:checked ~ .checkbox-custom {
+    background-color: #27ae60;
+    border-color: #27ae60;
+}
+
+.checkbox-custom:after {
+    content: "";
+    position: absolute;
+    display: none;
+    left: 5px;
+    top: 1px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.checkbox-container input:checked ~ .checkbox-custom:after {
+    display: block;
+}
+
+/* Indeterminate state */
+.checkbox-container input:indeterminate ~ .checkbox-custom {
+    background-color: #f39c12;
+    border-color: #f39c12;
+}
+
+.checkbox-container input:indeterminate ~ .checkbox-custom:after {
+    display: block;
+    left: 4px;
+    top: 0;
+    width: 6px;
+    height: 2px;
+    border: solid white;
+    border-width: 0 0 2px 0;
+    transform: none;
+}
+
+/* Table header checkbox alignment */
+thead .checkbox-container {
+    padding-left: 0;
+}
+
+/* Checkbox column alignment - center in column */
+th.checkbox-column,
+td.checkbox-column {
+    text-align: center;
+    vertical-align: middle;
+    width: 50px;
+}
+
+th.checkbox-column .checkbox-container,
+td.checkbox-column .checkbox-container {
+    display: inline-flex;
+    justify-content: center;
+    padding-left: 0;
+    margin: 0;
+}
+
+/* CHECKBOX HIDDEN STATE FOR TOGGLE */
+.checkbox-hidden {
+    display: none !important;
+}
+
+/* Checkbox column alignment in tables */
+th.checkbox-column,
+td.checkbox-column {
+    text-align: center;
+    vertical-align: middle;
+    width: 50px;
+}
+
+/* Toggle button styles */
+.btn-action-toggle {
+    padding: 10px 15px;
+    background: #9b59b6;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.btn-action-toggle:hover {
+    background: #8e44ad;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(155, 89, 182, 0.4);
+}
+
+.btn-action-toggle:active {
+    transform: translateY(0);
+}
+
+/* Danger button variant */
+.btn-primary.danger {
+    background: #e74c3c;
+}
+
+.btn-primary.danger:hover {
+    background: #c0392b;
+}

@@ -75,6 +75,9 @@ async function loadIssuanceTable(filterType = 'all') {
     if (!tbody) return;
     tbody.innerHTML = '';
     
+    // Clear selected checkboxes when reloading
+    window.selectedIssuanceIds = [];
+    
     try {
         let records = await getAllIssuances();
         console.log('Fetched issuances:', records);
@@ -90,16 +93,24 @@ async function loadIssuanceTable(filterType = 'all') {
         }
         
         if (records.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #888;">No records found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #888;">No records found</td></tr>';
             return;
         }
         
         records.forEach(r => {
             const row = document.createElement('tr');
+            row.className = 'issuance-row';
+            row.dataset.id = r.id;
             const statusBg = r.status === 'Issued' ? '#d5f4e6' : '#fef5e7';
             const statusColor = r.status === 'Issued' ? '#27ae60' : '#f39c12';
             
             row.innerHTML = `
+                <td class="checkbox-hidden" style="padding: 12px;">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="issuance-checkbox" value="${r.id}" onchange="updateSelectAllCheckbox()">
+                        <span class="checkbox-custom"></span>
+                    </label>
+                </td>
                 <td style="padding: 12px; font-weight: 500;">${r.certNumber || 'N/A'}</td>
                 <td style="padding: 12px;">${r.type ? r.type.toUpperCase() : 'N/A'}</td>
                 <td style="padding: 12px;">${r.name || 'N/A'}</td>
@@ -134,7 +145,7 @@ async function loadIssuanceTable(filterType = 'all') {
         });
     } catch (error) {
         console.error('Error loading issuance table:', error);
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: red;">Error loading data: ' + error.message + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: red;">Error loading data: ' + error.message + '</td></tr>';
     }
 }
 
@@ -166,7 +177,7 @@ async function searchCertificates() {
     tbody.innerHTML = '';
     
     if (filteredRecords.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #888;">No records found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #888;">No records found</td></tr>';
         return;
     }
     
@@ -176,6 +187,12 @@ async function searchCertificates() {
         const statusColor = r.status === 'Issued' ? '#27ae60' : '#f39c12';
         
         row.innerHTML = `
+            <td class="checkbox-hidden" style="padding: 12px;">
+                <label class="checkbox-container">
+                    <input type="checkbox" class="issuance-checkbox" value="${r.id}" onchange="updateSelectAllCheckbox()">
+                    <span class="checkbox-custom"></span>
+                </label>
+            </td>
             <td style="padding: 12px; font-weight: 500;">${r.certNumber || 'N/A'}</td>
             <td style="padding: 12px;">${r.type ? r.type.toUpperCase() : 'N/A'}</td>
             <td style="padding: 12px;">${r.name || 'N/A'}</td>
@@ -816,5 +833,419 @@ async function handleConfirmDeleteIssuance(event, id) {
     } finally {
         confirmBtn.disabled = false;
         confirmBtn.textContent = 'Confirm Delete';
+    }
+}
+
+// ==========================================
+// NEW FUNCTIONS FOR PRINT SELECTED/ALL
+// ==========================================
+
+// --- Toggle Select All Checkboxes ---
+function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const checkboxes = document.querySelectorAll('.issuance-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+}
+
+// --- Update Select All Checkbox State ---
+function updateSelectAllCheckbox() {
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    const checkboxes = document.querySelectorAll('.issuance-checkbox');
+    
+    if (checkboxes.length === 0) return;
+    
+    const allChecked = Array.from(checkboxes).every(checkbox => checkbox.checked);
+    const someChecked = Array.from(checkboxes).some(checkbox => checkbox.checked);
+    
+    if (allChecked) {
+        selectAllCheckbox.checked = true;
+        selectAllCheckbox.indeterminate = false;
+    } else if (someChecked) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = true;
+    } else {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+    }
+}
+
+// --- Get Selected Issuance IDs ---
+function getSelectedIssuanceIds() {
+    const checkboxes = document.querySelectorAll('.issuance-checkbox:checked');
+    return Array.from(checkboxes).map(checkbox => parseInt(checkbox.value));
+}
+
+// --- Print Selected Issuance Records ---
+async function printSelectedIssuance() {
+    const selectedIds = getSelectedIssuanceIds();
+    
+    if (selectedIds.length === 0) {
+        alert('Please select at least one certificate to print.');
+        return;
+    }
+    
+    console.log('Printing selected issuance records:', selectedIds);
+    
+    try {
+        const w = window.open('', '_blank');
+        if (!w) {
+            alert('Please allow popups to print');
+            return;
+        }
+        
+        const records = [];
+        for (const id of selectedIds) {
+            const record = await getIssuanceById(id);
+            if (record && !record.error) {
+                records.push(record);
+            }
+        }
+        
+        if (records.length === 0) {
+            alert('No records found for printing.');
+            w.close();
+            return;
+        }
+        
+        let certificatesHTML = '';
+        records.forEach((record, index) => {
+            certificatesHTML += `
+                <div style="page-break-after: ${index < records.length - 1 ? 'always' : 'none'};">
+                    <h1>CERTIFICATE OF ${record.type ? record.type.toUpperCase() : 'N/A'}</h1>
+                    <p>Civil Registry of Naic, Cavite</p>
+                    <hr>
+                    <div style="text-align: left; margin: 50px;">
+                        <p><strong>Cert No:</strong> ${record.certNumber || 'N/A'}</p>
+                        <p><strong>Name:</strong> ${record.name || 'N/A'}</p>
+                        <p><strong>Barangay:</strong> ${record.barangay || 'N/A'}</p>
+                        <p><strong>Date Issued:</strong> ${record.issuanceDate || 'N/A'}</p>
+                        <p><strong>Status:</strong> ${record.status || 'N/A'}</p>
+                    </div>
+                </div>
+            `;
+        });
+        
+        w.document.write(`
+            <html>
+            <head>
+                <title>Print Certificates</title>
+                <style>
+                    body {
+                        font-family: serif;
+                        padding: 40px;
+                        text-align: center;
+                        border: 5px double black;
+                    }
+                    @media print {
+                        body { border: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${certificatesHTML}
+                <script>setTimeout(() => window.print(), 500);</script>
+            </body>
+            </html>
+        `);
+        w.document.close();
+    } catch (error) {
+        console.error('Error in printSelectedIssuance:', error);
+        alert('Error printing documents: ' + error.message);
+    }
+}
+
+// --- Print All Issuance Records ---
+async function printAllIssuance() {
+    console.log('Printing all issuance records');
+    
+    try {
+        const records = await getAllIssuances();
+        
+        if (!records || records.length === 0) {
+            alert('No records found to print.');
+            return;
+        }
+        
+        const w = window.open('', '_blank');
+        if (!w) {
+            alert('Please allow popups to print');
+            return;
+        }
+        
+        let certificatesHTML = '';
+        records.forEach((record, index) => {
+            certificatesHTML += `
+                <div style="page-break-after: ${index < records.length - 1 ? 'always' : 'none'};">
+                    <h1>CERTIFICATE OF ${record.type ? record.type.toUpperCase() : 'N/A'}</h1>
+                    <p>Civil Registry of Naic, Cavite</p>
+                    <hr>
+                    <div style="text-align: left; margin: 50px;">
+                        <p><strong>Cert No:</strong> ${record.certNumber || 'N/A'}</p>
+                        <p><strong>Name:</strong> ${record.name || 'N/A'}</p>
+                        <p><strong>Barangay:</strong> ${record.barangay || 'N/A'}</p>
+                        <p><strong>Date Issued:</strong> ${record.issuanceDate || 'N/A'}</p>
+                        <p><strong>Status:</strong> ${record.status || 'N/A'}</p>
+                    </div>
+                </div>
+            `;
+        });
+        
+        w.document.write(`
+            <html>
+            <head>
+                <title>Print All Certificates</title>
+                <style>
+                    body {
+                        font-family: serif;
+                        padding: 40px;
+                        text-align: center;
+                        border: 5px double black;
+                    }
+                    @media print {
+                        body { border: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                ${certificatesHTML}
+                <script>setTimeout(() => window.print(), 500);</script>
+            </body>
+            </html>
+        `);
+        w.document.close();
+    } catch (error) {
+        console.error('Error in printAllIssuance:', error);
+        alert('Error printing documents: ' + error.message);
+    }
+}
+
+// ==========================================
+// NEW FUNCTIONS FOR TOGGLE CHECKBOXES & DELETE SELECTED
+// ==========================================
+
+// --- Track checkbox visibility state ---
+let checkboxesVisible = false;
+
+// --- Toggle Checkboxes Visibility ---
+function toggleCheckboxes() {
+    const checkboxes = document.querySelectorAll('.issuance-checkbox');
+    const headerCheckbox = document.getElementById('selectAllCheckbox');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    const toggleBtn = document.getElementById('toggleCheckboxesBtn');
+    
+    checkboxesVisible = !checkboxesVisible;
+    
+    checkboxes.forEach(checkbox => {
+        // Toggle on the checkbox-container (label)
+        const container = checkbox.closest('.checkbox-container');
+        if (container) {
+            if (checkboxesVisible) {
+                container.classList.remove('checkbox-hidden');
+            } else {
+                container.classList.add('checkbox-hidden');
+            }
+        }
+        // Also toggle on the parent td element
+        const td = checkbox.closest('td');
+        if (td) {
+            if (checkboxesVisible) {
+                td.classList.remove('checkbox-hidden');
+            } else {
+                td.classList.add('checkbox-hidden');
+            }
+        }
+    });
+    
+    // Also toggle the header checkbox
+    if (headerCheckbox) {
+        const headerContainer = headerCheckbox.closest('.checkbox-container');
+        if (headerContainer) {
+            if (checkboxesVisible) {
+                headerContainer.classList.remove('checkbox-hidden');
+            } else {
+                headerContainer.classList.add('checkbox-hidden');
+            }
+        }
+        // Toggle on the parent th element
+        const th = headerCheckbox.closest('th');
+        if (th) {
+            if (checkboxesVisible) {
+                th.classList.remove('checkbox-hidden');
+            } else {
+                th.classList.add('checkbox-hidden');
+            }
+        }
+        // Uncheck and reset when hiding
+        if (!checkboxesVisible) {
+            headerCheckbox.checked = false;
+            headerCheckbox.indeterminate = false;
+            checkboxes.forEach(cb => cb.checked = false);
+        }
+    }
+    
+    // Show/hide the Delete Selected button based on selection
+    updateDeleteSelectedButton();
+    
+    // Update toggle button - change background color based on state
+    if (toggleBtn) {
+        if (checkboxesVisible) {
+            toggleBtn.style.background = '#27ae60'; // Green when in edit mode (checkboxes visible)
+        } else {
+            toggleBtn.style.background = '#9b59b6'; // Purple when not in edit mode
+        }
+    }
+}
+
+// --- Update Delete Selected Button Visibility ---
+function updateDeleteSelectedButton() {
+    const selectedIds = getSelectedIssuanceIds();
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    
+    if (deleteSelectedBtn) {
+        if (selectedIds.length > 0 && checkboxesVisible) {
+            deleteSelectedBtn.style.display = 'inline-flex';
+        } else {
+            deleteSelectedBtn.style.display = 'none';
+        }
+    }
+}
+
+// --- Delete Selected Issuance Records ---
+function deleteSelectedIssuance() {
+    const selectedIds = getSelectedIssuanceIds();
+    
+    if (selectedIds.length === 0) {
+        alert('Please select at least one certificate to delete.');
+        return;
+    }
+    
+    // Open confirmation modal
+    openDeleteSelectedModal(selectedIds);
+}
+
+// --- Open Delete Selected Modal ---
+function openDeleteSelectedModal(selectedIds) {
+    // Remove existing modal if any
+    const existing = document.getElementById('deleteSelectedModal');
+    if (existing) existing.remove();
+
+    const modalHTML = `
+        <div id="deleteSelectedModal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center;">
+            <div style="background: white; border-radius: 10px; max-width: 420px; width: 100%; padding: 30px; position: relative;">
+                <button onclick="closeDeleteSelectedModal()" style="position: absolute; top: 15px; right: 15px; border: none; background: none; font-size: 20px; cursor: pointer;">✕</button>
+                
+                <h2 style="border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; color: #e74c3c;">Delete Multiple Certificates</h2>
+                
+                <p style="margin: 0 0 10px 0; color: #333;">
+                    You are about to delete <strong>${selectedIds.length}</strong> certificate(s).
+                </p>
+                <p style="margin: 0 0 20px 0; color: #666; font-size: 13px;">
+                    This action cannot be undone. Enter your Super Admin password to confirm.
+                </p>
+
+                <form id="deleteSelectedForm" onsubmit="handleConfirmDeleteSelected(event, ${JSON.stringify(selectedIds).replace(/"/g, '"')})">
+                    <div class="form-field">
+                        <label>Super Admin Password *</label>
+                        <input type="password" id="deleteSelectedPassword" placeholder="Enter your password" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+                    </div>
+
+                    <p id="deleteSelectedError" style="display: none; margin-top: 10px; color: #c0392b; font-size: 13px;"></p>
+
+                    <div style="display: flex; gap: 10px; margin-top: 25px;">
+                        <button id="confirmDeleteSelectedBtn" type="submit" class="btn-primary" style="flex: 1; background: #e74c3c;">Confirm Delete (${selectedIds.length})</button>
+                        <button type="button" onclick="closeDeleteSelectedModal()" class="btn-primary" style="flex: 1; background: #95a5a6;">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// --- Close Delete Selected Modal ---
+function closeDeleteSelectedModal() {
+    const modal = document.getElementById('deleteSelectedModal');
+    if (modal) modal.remove();
+}
+
+// --- Handle Confirm Delete Selected ---
+async function handleConfirmDeleteSelected(event, selectedIds) {
+    event.preventDefault();
+
+    const passwordInput = document.getElementById('deleteSelectedPassword');
+    const errorText = document.getElementById('deleteSelectedError');
+    const confirmBtn = document.getElementById('confirmDeleteSelectedBtn');
+
+    if (!passwordInput || !errorText || !confirmBtn) return;
+
+    const password = passwordInput.value.trim();
+    if (!password) {
+        errorText.textContent = 'Password is required.';
+        errorText.style.display = 'block';
+        return;
+    }
+
+    errorText.style.display = 'none';
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Deleting...';
+
+    try {
+        // Verify the current user's password
+        const response = await fetch('http://localhost:5000/api/verify-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                userId: currentUser.id, 
+                password: password 
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Password verified, now delete all selected issuances
+            let deletedCount = 0;
+            let failedCount = 0;
+            
+            for (const id of selectedIds) {
+                try {
+                    const deleteResult = await deleteIssuance(id);
+                    if (deleteResult.success) {
+                        deletedCount++;
+                    } else {
+                        failedCount++;
+                    }
+                } catch (err) {
+                    console.error('Error deleting issuance ' + id, err);
+                    failedCount++;
+                }
+            }
+            
+            closeDeleteSelectedModal();
+            
+            // Reload the table
+            loadIssuanceData();
+            
+            // Show success message
+            if (failedCount === 0) {
+                showSuccessModal(`Successfully deleted ${deletedCount} certificate(s)!`);
+            } else {
+                showSuccessModal(`Deleted ${deletedCount} certificate(s). ${failedCount} failed.`);
+            }
+        } else {
+            errorText.textContent = data.message || 'Invalid password. Please try again.';
+            errorText.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error deleting issuances:', error);
+        errorText.textContent = 'Failed to connect to server. Make sure the server is running.';
+        errorText.style.display = 'block';
+    } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = `Confirm Delete (${selectedIds.length})`;
     }
 }
