@@ -44,6 +44,27 @@
 - [ ] Implement Server-Side Rendering (SSR) for initial load
 - [ ] Add React loading states and transitions
 
+### 9. Integrate Inertia.js for Laravel + React (Recommended: Use Laravel Breeze)
+- [ ] Create new Laravel project
+- [ ] Install Laravel Breeze with React/Inertia stack (recommended approach)
+  - Run: `composer require laravel/breeze --dev`
+  - Run: `php artisan breeze:install react`
+  - This automatically sets up React + Inertia.js together
+- [ ] No need to install separate React framework - Breeze handles it
+- [ ] Configure database connection to existing MySQL (civicore_db)
+- [ ] Set up Inertia.js in Laravel (server-side)
+- [ ] Install Inertia.js React adapter (client-side) - handled by Breeze
+- [ ] Create React components that work with Inertia
+- [ ] Replace traditional API responses with Inertia::render()
+- [ ] Pass data directly from Laravel controllers to React components
+- [ ] Update routes to use Inertia routes instead of API endpoints
+- [ ] Remove need for separate API endpoints (controllers render React directly)
+- [ ] Maintain Laravel routing, controllers, and data logic
+- [ ] Make React frontend feel like part of Laravel application
+- [ ] Migrate existing Express.js API endpoints to Laravel controllers
+- [ ] Port over all functionality: auth, documents, issuances, users, barangays, templates
+- [ ] Integrate EasyOCR Python script execution from Laravel
+
 ### 7. Secure Login - Hide Password/Account Details
 - [ ] Implement JWT (JSON Web Tokens) for authentication
 - [ ] Store tokens securely (httpOnly cookies)
@@ -52,6 +73,20 @@
 - [ ] Add CSRF protection
 - [ ] Ensure sensitive data is never sent to client
 - [ ] Implement logout functionality that clears tokens
+
+### 8. Migrate Express.js to Laravel
+- [ ] Create new Laravel project in separate directory
+- [ ] Set up Laravel routes (API endpoints matching existing Express routes)
+- [ ] Create Laravel controllers for all API functionality
+- [ ] Configure database connection to existing MySQL (civicore_db)
+- [ ] Implement user authentication (login, logout, session)
+- [ ] Implement user/role management with permissions
+- [ ] Implement document upload with multer
+- [ ] Implement EasyOCR integration (Python script execution from PHP)
+- [ ] Create issuances, barangays, templates API endpoints
+- [ ] Test all API endpoints match existing Express API
+- [ ] Keep frontend (vanilla JS) unchanged - API-only Laravel approach
+- [ ] Deploy and switch from Express to Laravel
 
 ---
 
